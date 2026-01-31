@@ -41,7 +41,7 @@ Die Integration sendet kontextbasierte Telegram‑Benachrichtigungen und unterst
    - Klicke oben rechts auf **⋮ → Custom repositories**
    - Trage dein Repository ein, z. B.:  
      ```
-     https://github.com/northpower25/homeassistant-fuel-watcher
+     https://github.com/northpower25/homeassistant-fuel-watcher-
      ```
    - Kategorie: **Integration**
 

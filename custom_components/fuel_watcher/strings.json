@@ -11,12 +11,14 @@
           "plz": "PLZ",
           "radius": "Radius (km)",
           "fuel": "Kraftstoff",
+          "source": "Preisquelle",
           "price_threshold": "Preisschwelle (€/l, 0 = deaktiviert)",
           "distance_threshold_km": "Max. Entfernung zur Tankstelle (km, 0 = egal)",
-          "entity_fuel_level": "Tankinhalt Entität",
-          "entity_range": "Reichweite Entität",
-          "entity_consumption": "Verbrauch Entität",
-          "entity_location": "Positionsentität (lat,lon)"
+          "entity_fuel_level": "Tankinhalt Entität (Dropdown oder Name)",
+          "entity_range": "Reichweite Entität (Dropdown oder Name)",
+          "entity_consumption": "Verbrauch Entität (optional)",
+          "entity_odometer": "Kilometerstand Entität (optional)",
+          "entity_location": "Positionsentität (lat,lon, optional)"
         }
       }
     }

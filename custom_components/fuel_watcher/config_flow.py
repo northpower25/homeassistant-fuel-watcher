@@ -11,6 +11,9 @@ class FuelWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         er = entity_registry.async_get(self.hass)
         entities = sorted(er.entities.keys())
 
+        def entity_field():
+            return vol.Any(vol.In(entities), str)
+
         schema = vol.Schema({
             vol.Required(CONF_TANKERKOENIG_API): str,
             vol.Required(CONF_TELEGRAM_TOKEN): str,
@@ -20,14 +23,16 @@ class FuelWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Optional(CONF_FUEL, default="e5"): vol.In(
                 ["e5", "e10", "diesel", "superplus", "lpg", "cng"]
             ),
+            vol.Optional(CONF_SOURCE, default=SOURCE_TANKERKOENIG): vol.In(SUPPORTED_SOURCES),
 
-            vol.Optional(CONF_PRICE_THRESHOLD, default=0.0): float,
-            vol.Optional(CONF_DISTANCE_THRESHOLD, default=10.0): float,
+            vol.Optional(CONF_PRICE_THRESHOLD, default=0.0): vol.Coerce(float),
+            vol.Optional(CONF_DISTANCE_THRESHOLD, default=10.0): vol.Coerce(float),
 
-            vol.Optional(CONF_ENTITY_FUEL_LEVEL): vol.In(entities),
-            vol.Optional(CONF_ENTITY_RANGE): vol.In(entities),
-            vol.Optional(CONF_ENTITY_CONSUMPTION): vol.In(entities),
-            vol.Optional(CONF_ENTITY_LOCATION): vol.In(entities),
+            vol.Optional(CONF_ENTITY_FUEL_LEVEL): entity_field(),
+            vol.Optional(CONF_ENTITY_RANGE): entity_field(),
+            vol.Optional(CONF_ENTITY_CONSUMPTION): entity_field(),
+            vol.Optional(CONF_ENTITY_ODOMETER): entity_field(),
+            vol.Optional(CONF_ENTITY_LOCATION): entity_field(),
         })
 
         return self.async_show_form(step_id="user", data_schema=schema)

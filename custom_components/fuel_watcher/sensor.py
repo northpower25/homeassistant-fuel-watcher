@@ -1,11 +1,9 @@
-from datetime import timedelta, datetime
-import math
-
+from datetime import timedelta
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import dt as dt_util
 
-from .tankerkoenig import get_cheapest
+from .sources import get_cheapest
 from .telegram import send_telegram
 from .vehicle import get_vehicle_data
 from .statistics import (
@@ -37,6 +35,7 @@ class FuelWatcherSensor(SensorEntity):
         self._plz = entry.data[CONF_PLZ]
         self._radius = entry.data[CONF_RADIUS]
         self._fuel = entry.data[CONF_FUEL]
+        self._source = entry.data.get(CONF_SOURCE, SOURCE_TANKERKOENIG)
 
         self._price_threshold = float(entry.data.get(CONF_PRICE_THRESHOLD, 0.0))
         self._distance_threshold = float(entry.data.get(CONF_DISTANCE_THRESHOLD, 10.0))
@@ -48,7 +47,7 @@ class FuelWatcherSensor(SensorEntity):
         self._attr_extra_state_attributes = {}
 
     async def async_update(self):
-        data = get_cheapest(self._api, self._plz, self._radius, self._fuel)
+        data = get_cheapest(self._source, self._api, self._plz, self._radius, self._fuel)
         if not data:
             return
 
@@ -61,11 +60,11 @@ class FuelWatcherSensor(SensorEntity):
         fuel_level = vehicle["fuel_level"]
         range_km = vehicle["range"]
         consumption = vehicle["consumption"]
+        odometer = vehicle["odometer"]
         location = vehicle["location"]
 
-        # Historie aktualisieren (aus Reichweite)
-        if range_km is not None:
-            update_history(range_km)
+        # Historie aktualisieren (aus Reichweite + Odometer)
+        update_history(range_km, odometer)
 
         distance_info = None
         distance_ok = True
@@ -104,12 +103,11 @@ class FuelWatcherSensor(SensorEntity):
                 pass
 
         if consumption is not None:
-            context.append(f"Verbrauch: {consumption} L/100km")
+            context.append(f"Verbrauch (Sensor): {consumption} L/100km")
 
         if distance_info is not None:
             context.append(f"Entfernung zur Tankstelle: {distance_info:.1f} km")
 
-        # Strategische Entscheidung (warten / tanken)
         now = dt_util.utcnow()
         decision, reason = decide_tank_strategy(now, range_km)
 
@@ -136,7 +134,7 @@ class FuelWatcherSensor(SensorEntity):
 
         self._last_price = price
         self._attr_native_value = price
-        attrs = {"station": station, "fuel": self._fuel}
+        attrs = {"station": station, "fuel": self._fuel, "source": self._source}
         if distance_info is not None:
             attrs["distance_km"] = round(distance_info, 2)
         if fuel_level is not None:

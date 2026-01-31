@@ -4,7 +4,6 @@ import os
 import math
 from .const import HISTORY_FILE
 
-# grobe statistische Muster
 CHEAP_HOURS = {
     "monday": [18, 19, 20],
     "tuesday": [19, 20],
@@ -27,12 +26,24 @@ def haversine_km(lat1, lon1, lat2, lon2):
 
 def load_history():
     if not os.path.exists(HISTORY_FILE):
-        return {"daily_km": {}, "last_range": None, "last_ts": None}
+        return {
+            "daily_km": {},
+            "last_range": None,
+            "last_odometer": None,
+            "last_ts": None,
+            "avg_consumption": None,
+        }
     try:
         with open(HISTORY_FILE, "r") as f:
             return json.load(f)
     except Exception:
-        return {"daily_km": {}, "last_range": None, "last_ts": None}
+        return {
+            "daily_km": {},
+            "last_range": None,
+            "last_odometer": None,
+            "last_ts": None,
+            "avg_consumption": None,
+        }
 
 def save_history(history):
     try:
@@ -41,36 +52,57 @@ def save_history(history):
     except Exception as e:
         print("History save error:", e)
 
-def update_history(range_km):
-    """Schätzt gefahrene km aus Reichweitenänderung."""
-    if range_km is None:
-        return
-    try:
-        range_km = float(range_km)
-    except ValueError:
-        return
-
+def update_history(range_km, odometer):
     history = load_history()
-    last_range = history.get("last_range")
-    last_ts = history.get("last_ts")
-
     now = datetime.utcnow()
     today = now.date().isoformat()
 
-    if last_range is not None and last_ts is not None:
+    last_range = history.get("last_range")
+    last_odometer = history.get("last_odometer")
+
+    # km aus Odometer
+    driven_km = None
+    if odometer is not None and last_odometer is not None:
         try:
-            last_range = float(last_range)
-            driven = max(0.0, last_range - range_km)
+            driven_km = float(odometer) - float(last_odometer)
+            if driven_km < 0:
+                driven_km = None
         except ValueError:
-            driven = 0.0
+            driven_km = None
 
-        if driven > 0:
-            daily_km = history.get("daily_km", {})
-            daily_km[today] = daily_km.get(today, 0.0) + driven
-            history["daily_km"] = daily_km
+    # Reichweitenänderung
+    range_diff = None
+    if range_km is not None and last_range is not None:
+        try:
+            range_diff = float(last_range) - float(range_km)
+            if range_diff < 0:
+                range_diff = None
+        except ValueError:
+            range_diff = None
 
+    daily_km = history.get("daily_km", {})
+
+    if driven_km is not None and driven_km > 0:
+        daily_km[today] = daily_km.get(today, 0.0) + driven_km
+
+    # Verbrauchsschätzung
+    avg_consumption = history.get("avg_consumption")
+    if driven_km is not None and range_diff is not None and range_diff > 0:
+        try:
+            consumption = (driven_km / range_diff) * 100.0
+            if avg_consumption is None:
+                avg_consumption = consumption
+            else:
+                avg_consumption = (avg_consumption * 0.7) + (consumption * 0.3)
+        except ZeroDivisionError:
+            pass
+
+    history["daily_km"] = daily_km
     history["last_range"] = range_km
+    history["last_odometer"] = odometer
     history["last_ts"] = now.isoformat()
+    history["avg_consumption"] = avg_consumption
+
     save_history(history)
 
 def average_daily_km(days=14):
@@ -84,23 +116,23 @@ def average_daily_km(days=14):
     total = sum(v for _, v in items)
     return total / len(items)
 
+def get_avg_consumption():
+    history = load_history()
+    return history.get("avg_consumption")
+
 def find_next_cheap_slot(now):
     weekday = now.strftime("%A").lower()
     hours = CHEAP_HOURS.get(weekday, [19, 20, 21])
-    # wir nehmen das erste günstige Zeitfenster am selben Tag, sonst nächsten Tag
     for h in hours:
         candidate = now.replace(hour=h, minute=0, second=0, microsecond=0)
         if candidate > now:
             return candidate
-
-    # sonst nächster Tag, gleiche Logik
     for i in range(1, 3):
         day = now + timedelta(days=i)
         wd = day.strftime("%A").lower()
         hours = CHEAP_HOURS.get(wd, [19, 20])
         candidate = day.replace(hour=hours[0], minute=0, second=0, microsecond=0)
         return candidate
-
     return now + timedelta(hours=24)
 
 def estimate_km_until(target_dt, avg_daily):
@@ -113,7 +145,6 @@ def estimate_km_until(target_dt, avg_daily):
     return avg_daily * (delta_h / 24.0)
 
 def decide_tank_strategy(now, range_km):
-    """Gibt (decision, reason) zurück: wait / warning / tank_now."""
     if range_km is None:
         return None, "Keine Reichweite verfügbar"
 
@@ -126,7 +157,6 @@ def decide_tank_strategy(now, range_km):
     next_slot = find_next_cheap_slot(now)
 
     if avg is None:
-        # keine Historie → einfache Logik
         return "tank_now", "Keine Verbrauchshistorie vorhanden – konservative Empfehlung: tanken"
 
     km_until_slot = estimate_km_until(next_slot, avg)

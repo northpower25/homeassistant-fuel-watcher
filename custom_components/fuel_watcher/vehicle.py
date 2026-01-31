@@ -11,6 +11,7 @@ def get_vehicle_data(hass, entry):
         "fuel_level": _read_state(hass, entry.data.get("entity_fuel_level")),
         "range": _read_state(hass, entry.data.get("entity_range")),
         "consumption": _read_state(hass, entry.data.get("entity_consumption")),
+        "odometer": _read_state(hass, entry.data.get("entity_odometer")),
         "location": _read_state(hass, entry.data.get("entity_location")),
     }
     return data

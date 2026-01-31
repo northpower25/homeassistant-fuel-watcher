@@ -28,7 +28,7 @@ class FuelWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             return self.async_create_entry(title="Fuel Watcher", data=user_input)
 
-        # Alle Entity-Felder als Freitext (kein Entity-Registry-Zugriff)
+        # Alle Entity-Felder als Freitext (kein Entity-Registry-Zugriff) test
         schema = vol.Schema({
             vol.Required(CONF_TANKERKOENIG_API): str,
             vol.Required(CONF_TELEGRAM_TOKEN): str,

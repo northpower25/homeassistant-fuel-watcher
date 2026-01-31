@@ -1,0 +1,24 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Fuel Watcher einrichten",
+        "description": "Bitte API‑Keys, Standortdaten und Fahrzeugdaten eingeben.",
+        "data": {
+          "tankerkoenig_api_key": "Tankerkoenig API Key",
+          "telegram_token": "Telegram Bot Token",
+          "telegram_chat_id": "Telegram Chat ID",
+          "plz": "PLZ",
+          "radius": "Radius (km)",
+          "fuel": "Kraftstoff",
+          "price_threshold": "Preisschwelle (€/l, 0 = deaktiviert)",
+          "distance_threshold_km": "Max. Entfernung zur Tankstelle (km, 0 = egal)",
+          "entity_fuel_level": "Tankinhalt Entität",
+          "entity_range": "Reichweite Entität",
+          "entity_consumption": "Verbrauch Entität",
+          "entity_location": "Positionsentität (lat,lon)"
+        }
+      }
+    }
+  }
+}

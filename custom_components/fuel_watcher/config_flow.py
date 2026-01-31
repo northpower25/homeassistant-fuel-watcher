@@ -1,6 +1,5 @@
 import voluptuous as vol
 from homeassistant import config_entries
-from homeassistant.helpers.entity_registry import async_get as async_get_entity_registry
 
 from .const import (
     DOMAIN,
@@ -23,29 +22,13 @@ from .const import (
 
 
 class FuelWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Config flow for Fuel Watcher."""
 
     async def async_step_user(self, user_input=None):
-        """Handle the initial step."""
         if user_input is not None:
             return self.async_create_entry(title="Fuel Watcher", data=user_input)
 
-        # --- Entity Registry sicher laden ---
-        er = async_get_entity_registry(self.hass)
-        entities = []
-
-        if er is not None and hasattr(er, "entities"):
-            try:
-                entities = sorted(er.entities.keys())
-            except Exception:
-                entities = []
-
-        # --- Dropdown + Freitext ---
-        def entity_field():
-            if entities:
-                return vol.Any(vol.In(entities), str)
-            return str
-
-        # --- Formularschema ---
+        # Alle Entity-Felder als Freitext (kein Entity-Registry-Zugriff)
         schema = vol.Schema({
             vol.Required(CONF_TANKERKOENIG_API): str,
             vol.Required(CONF_TELEGRAM_TOKEN): str,
@@ -59,16 +42,14 @@ class FuelWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             vol.Optional(CONF_SOURCE, default="tankerkoenig"): vol.In(SUPPORTED_SOURCES),
 
-            # --- numerische Felder robust ---
             vol.Optional(CONF_PRICE_THRESHOLD, default=0.0): vol.Coerce(float),
             vol.Optional(CONF_DISTANCE_THRESHOLD, default=10.0): vol.Coerce(float),
 
-            # --- Fahrzeugdaten ---
-            vol.Optional(CONF_ENTITY_FUEL_LEVEL): entity_field(),
-            vol.Optional(CONF_ENTITY_RANGE): entity_field(),
-            vol.Optional(CONF_ENTITY_CONSUMPTION): entity_field(),
-            vol.Optional(CONF_ENTITY_ODOMETER): entity_field(),
-            vol.Optional(CONF_ENTITY_LOCATION): entity_field(),
+            vol.Optional(CONF_ENTITY_FUEL_LEVEL): str,
+            vol.Optional(CONF_ENTITY_RANGE): str,
+            vol.Optional(CONF_ENTITY_CONSUMPTION): str,
+            vol.Optional(CONF_ENTITY_ODOMETER): str,
+            vol.Optional(CONF_ENTITY_LOCATION): str,
         })
 
         return self.async_show_form(step_id="user", data_schema=schema)

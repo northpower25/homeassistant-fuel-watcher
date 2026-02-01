@@ -7,14 +7,6 @@ def get_vehicle_data(hass, entry):
             return None
         return state.state
 
-    def safe_attr(entity_id, attr):
-        if not entity_id:
-            return None
-        state = hass.states.get(entity_id)
-        if not state:
-            return None
-        return state.attributes.get(attr)
-
     return {
         "fuel_level": safe_get(entry.data.get("entity_fuel_level")),
         "range": safe_get(entry.data.get("entity_range")),

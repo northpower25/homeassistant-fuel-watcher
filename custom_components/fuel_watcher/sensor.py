@@ -6,6 +6,7 @@ from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import dt as dt_util
 
 from .sources import get_cheapest
+from .sources.geocode import get_dynamic_postcode
 from .telegram import send_telegram
 from .vehicle import get_vehicle_data
 from .statistics import (
@@ -24,7 +25,12 @@ from .const import (
     CONF_SOURCE,
     CONF_PRICE_THRESHOLD,
     CONF_DISTANCE_THRESHOLD,
+    CONF_ENTITY_FUEL_LEVEL,
+    CONF_ENTITY_RANGE,
+    CONF_ENTITY_CONSUMPTION,
+    CONF_ENTITY_ODOMETER,
     CONF_ENTITY_LOCATION,
+    CONF_DYNAMIC_PLZ,
     SOURCE_TANKERKOENIG,
 )
 
@@ -33,19 +39,48 @@ _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(minutes=5)
 
 
+def validate_entities(hass, entry):
+    """Check if all configured entities exist in Home Assistant."""
+    missing = []
+
+    def check(key):
+        entity_id = entry.options.get(key) or entry.data.get(key)
+        if entity_id and hass.states.get(entity_id) is None:
+            missing.append(entity_id)
+
+    check(CONF_ENTITY_FUEL_LEVEL)
+    check(CONF_ENTITY_RANGE)
+    check(CONF_ENTITY_CONSUMPTION)
+    check(CONF_ENTITY_ODOMETER)
+    check(CONF_ENTITY_LOCATION)
+
+    return missing
+
+
 async def async_setup_entry(hass, entry, async_add_entities):
     main_sensor = FuelWatcherSensor(hass, entry)
     diag_sensor = FuelWatcherDiagnosticsSensor(hass, entry, main_sensor)
+    location_sensor = FuelWatcherLocationSensor(hass, entry)
+    postcode_sensor = FuelWatcherPostcodeSensor(hass, entry, main_sensor)
 
-    async_add_entities([main_sensor, diag_sensor])
+    async_add_entities([main_sensor, diag_sensor, location_sensor, postcode_sensor])
 
-    # Sensor-Instanz für Test-Service speichern
     if DOMAIN not in hass.data:
         hass.data[DOMAIN] = {}
+
     hass.data[DOMAIN]["sensor"] = main_sensor
+
+    missing = validate_entities(hass, entry)
+    if missing:
+        _LOGGER.warning(f"[FuelWatcher] Fehlende Entities: {missing}")
+        main_sensor._diag["missing_entities"] = missing
+    else:
+        main_sensor._diag["missing_entities"] = []
 
     async def update(now):
         await main_sensor.async_update()
+        await location_sensor.async_update()
+        await postcode_sensor.async_update()
         diag_sensor.update_from_main()
 
     async_track_time_interval(hass, update, SCAN_INTERVAL)
@@ -59,13 +94,15 @@ class FuelWatcherSensor(SensorEntity):
         self._api = entry.data.get(CONF_TANKERKOENIG_API)
         self._token = entry.data.get(CONF_TELEGRAM_TOKEN)
         self._chat = entry.data.get(CONF_TELEGRAM_CHAT_ID)
-        self._plz = entry.data.get(CONF_PLZ)
-        self._radius = entry.data.get(CONF_RADIUS)
-        self._fuel = entry.data.get(CONF_FUEL)
-        self._source = entry.data.get(CONF_SOURCE, SOURCE_TANKERKOENIG)
 
-        self._price_threshold = float(entry.data.get(CONF_PRICE_THRESHOLD, 0.0))
-        self._distance_threshold = float(entry.data.get(CONF_DISTANCE_THRESHOLD, 10.0))
+        self._plz = entry.options.get(CONF_PLZ) or entry.data.get(CONF_PLZ)
+        self._radius = entry.options.get(CONF_RADIUS) or entry.data.get(CONF_RADIUS)
+        self._fuel = entry.options.get(CONF_FUEL) or entry.data.get(CONF_FUEL)
+        self._source = entry.options.get(CONF_SOURCE) or entry.data.get(CONF_SOURCE, SOURCE_TANKERKOENIG)
+        self._dynamic_plz = entry.options.get(CONF_DYNAMIC_PLZ, entry.data.get(CONF_DYNAMIC_PLZ, False))
+
+        self._price_threshold = float(entry.options.get(CONF_PRICE_THRESHOLD, entry.data.get(CONF_PRICE_THRESHOLD, 0.0)))
+        self._distance_threshold = float(entry.options.get(CONF_DISTANCE_THRESHOLD, entry.data.get(CONF_DISTANCE_THRESHOLD, 10.0)))
 
         self._attr_name = "Fuel Watcher"
         self._attr_native_unit_of_measurement = "€/l"
@@ -79,6 +116,8 @@ class FuelWatcherSensor(SensorEntity):
             "last_price_data": None,
             "last_distance": None,
             "last_strategy": None,
+            "missing_entities": [],
+            "dynamic_plz": None,
             "health_score": 0,
             "checks": {},
             "manual_test": None,
@@ -87,13 +126,25 @@ class FuelWatcherSensor(SensorEntity):
     async def async_update(self):
         _LOGGER.debug("FuelWatcher: Update gestartet")
 
-        # --- Preisquelle ---
+        # Dynamische PLZ
+        if self._dynamic_plz:
+            entity_loc = self._entry.options.get(CONF_ENTITY_LOCATION) or self._entry.data.get(CONF_ENTITY_LOCATION)
+            dynamic_plz = None
+            if entity_loc:
+                dynamic_plz = await get_dynamic_postcode(self.hass, entity_loc)
+            plz_to_use = dynamic_plz or self._plz
+            self._diag["dynamic_plz"] = plz_to_use
+        else:
+            plz_to_use = self._plz
+            self._diag["dynamic_plz"] = None
+
+        # Preisquelle
         try:
             data = await get_cheapest(
                 self.hass,
                 self._source,
                 self._api,
-                self._plz,
+                plz_to_use,
                 self._radius,
                 self._fuel,
             )
@@ -113,7 +164,7 @@ class FuelWatcherSensor(SensorEntity):
         station_lat = data.get("lat")
         station_lng = data.get("lng")
 
-        # --- Fahrzeugdaten ---
+        # Fahrzeugdaten
         try:
             vehicle = get_vehicle_data(self.hass, self._entry)
             self._diag["last_vehicle"] = vehicle
@@ -128,13 +179,13 @@ class FuelWatcherSensor(SensorEntity):
         odometer = vehicle.get("odometer")
         location_entity = vehicle.get("location")
 
-        # --- Historie ---
+        # Historie
         try:
             update_history(range_km, odometer)
         except Exception as e:
             _LOGGER.error(f"FuelWatcher: Fehler in update_history: {e}")
 
-        # --- Standort robust ---
+        # Standort / Distanz
         distance_info = None
         try:
             if isinstance(location_entity, str) and "," in location_entity:
@@ -143,7 +194,7 @@ class FuelWatcherSensor(SensorEntity):
                 vlon = float(lon_str)
                 distance_info = haversine_km(vlat, vlon, station_lat, station_lng)
             else:
-                loc_state = self.hass.states.get(self._entry.data.get(CONF_ENTITY_LOCATION))
+                loc_state = self.hass.states.get(self._entry.options.get(CONF_ENTITY_LOCATION) or self._entry.data.get(CONF_ENTITY_LOCATION))
                 if loc_state:
                     lat = loc_state.attributes.get("latitude")
                     lon = loc_state.attributes.get("longitude")
@@ -154,7 +205,7 @@ class FuelWatcherSensor(SensorEntity):
 
         self._diag["last_distance"] = distance_info
 
-        # --- Strategie ---
+        # Strategie
         try:
             now = dt_util.utcnow()
             decision, reason = decide_tank_strategy(now, range_km)
@@ -164,7 +215,7 @@ class FuelWatcherSensor(SensorEntity):
             _LOGGER.error(self._diag["last_error"])
             decision, reason = None, None
 
-        # --- Sensorwerte setzen ---
+        # Sensorwerte
         self._attr_native_value = price
         self._attr_extra_state_attributes = {
             "station": station,
@@ -178,9 +229,9 @@ class FuelWatcherSensor(SensorEntity):
             "distance_km": distance_info,
             "strategy_decision": decision,
             "strategy_reason": reason,
+            "plz_used": plz_to_use,
         }
 
-        # --- Health Check ---
         checks = {}
         checks["price_source"] = data is not None
         checks["vehicle_data"] = vehicle is not None and any(vehicle.values())
@@ -203,7 +254,6 @@ class FuelWatcherSensor(SensorEntity):
 
         results = {}
 
-        # Preisquelle
         try:
             data = await get_cheapest(
                 self.hass,
@@ -218,7 +268,6 @@ class FuelWatcherSensor(SensorEntity):
             results["price_source"] = False
             data = None
 
-        # Fahrzeugdaten
         try:
             vehicle = get_vehicle_data(self.hass, self._entry)
             results["vehicle_data"] = vehicle is not None and any(vehicle.values())
@@ -226,14 +275,12 @@ class FuelWatcherSensor(SensorEntity):
             results["vehicle_data"] = False
             vehicle = {}
 
-        # Standort
         try:
             loc = vehicle.get("location")
             results["location_valid"] = loc is not None
         except Exception:
             results["location_valid"] = False
 
-        # Strategie
         try:
             now = dt_util.utcnow()
             decision, reason = decide_tank_strategy(now, vehicle.get("range"))
@@ -241,14 +288,12 @@ class FuelWatcherSensor(SensorEntity):
         except Exception:
             results["strategy_valid"] = False
 
-        # Historie
         try:
             update_history(vehicle.get("range"), vehicle.get("odometer"))
             results["history_ok"] = True
         except Exception:
             results["history_ok"] = False
 
-        # Telegram
         results["telegram_ready"] = bool(self._token and self._chat)
 
         self._diag["manual_test"] = results
@@ -269,3 +314,48 @@ class FuelWatcherDiagnosticsSensor(SensorEntity):
         diag = self._main._diag
         self._attr_native_value = "ok" if diag["last_update_ok"] else "error"
         self._attr_extra_state_attributes = diag
+
+
+class FuelWatcherLocationSensor(SensorEntity):
+    def __init__(self, hass, entry):
+        self.hass = hass
+        self._entry = entry
+        self._attr_name = "Fuel Watcher Location"
+        self._attr_native_value = None
+        self._attr_extra_state_attributes = {}
+
+    async def async_update(self):
+        entity_id = self._entry.options.get(CONF_ENTITY_LOCATION) or self._entry.data.get(CONF_ENTITY_LOCATION)
+        if not entity_id:
+            self._attr_native_value = "unknown"
+            self._attr_extra_state_attributes = {}
+            return
+
+        state = self.hass.states.get(entity_id)
+        if not state:
+            self._attr_native_value = "unknown"
+            self._attr_extra_state_attributes = {}
+            return
+
+        lat = state.attributes.get("latitude")
+        lon = state.attributes.get("longitude")
+
+        self._attr_native_value = f"{lat},{lon}" if lat is not None and lon is not None else "unknown"
+        self._attr_extra_state_attributes = {
+            "latitude": lat,
+            "longitude": lon,
+            "entity": entity_id,
+        }
+
+
+class FuelWatcherPostcodeSensor(SensorEntity):
+    def __init__(self, hass, entry, main_sensor):
+        self.hass = hass
+        self._entry = entry
+        self._main = main_sensor
+        self._attr_name = "Fuel Watcher Postcode"
+        self._attr_native_value = None
+
+    async def async_update(self):
+        dynamic_plz = self._main._diag.get("dynamic_plz")
+        self._attr_native_value = dynamic_plz or "unknown"

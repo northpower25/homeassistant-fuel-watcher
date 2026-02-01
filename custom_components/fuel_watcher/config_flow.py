@@ -7,7 +7,6 @@ from .const import (
     CONF_TANKERKOENIG_API,
     CONF_TELEGRAM_TOKEN,
     CONF_TELEGRAM_CHAT_ID,
-    CONF_PLZ,
     CONF_RADIUS,
     CONF_FUEL,
     CONF_SOURCE,
@@ -34,14 +33,8 @@ class FuelWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(CONF_TELEGRAM_TOKEN): str,
             vol.Required(CONF_TELEGRAM_CHAT_ID): str,
 
-            vol.Required(CONF_DYNAMIC_PLZ, default=False): bool,
-            vol.Required(CONF_PLZ): vol.All(str, vol.Length(min=5, max=5)),
             vol.Required(CONF_RADIUS, default=5): vol.Coerce(int),
-
-            vol.Required(CONF_FUEL, default="e5"): vol.In(
-                ["e5", "e10", "diesel", "superplus", "lpg", "cng"]
-            ),
-
+            vol.Required(CONF_FUEL, default="e5"): vol.In(["e5", "e10", "diesel", "superplus", "lpg", "cng"]),
             vol.Required(CONF_SOURCE, default="tankerkoenig"): vol.In(SUPPORTED_SOURCES),
 
             vol.Optional(CONF_PRICE_THRESHOLD, default=0.0): vol.Coerce(float),
@@ -52,6 +45,8 @@ class FuelWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Optional(CONF_ENTITY_CONSUMPTION, default=""): str,
             vol.Optional(CONF_ENTITY_ODOMETER, default=""): str,
             vol.Optional(CONF_ENTITY_LOCATION, default=""): str,
+
+            vol.Optional(CONF_DYNAMIC_PLZ, default=False): bool,
         })
 
         return self.async_show_form(step_id="user", data_schema=schema)
@@ -74,18 +69,12 @@ class FuelWatcherOptionsFlow(config_entries.OptionsFlow):
         data = self.entry.data
         options = self.entry.options
 
-        def opt(key, default=""):
+        def opt(key, default=None):
             return options.get(key, data.get(key, default))
 
         schema = vol.Schema({
-            vol.Required(CONF_DYNAMIC_PLZ, default=opt(CONF_DYNAMIC_PLZ, False)): bool,
-            vol.Required(CONF_PLZ, default=opt(CONF_PLZ)): vol.All(str, vol.Length(min=5, max=5)),
             vol.Required(CONF_RADIUS, default=opt(CONF_RADIUS, 5)): vol.Coerce(int),
-
-            vol.Required(CONF_FUEL, default=opt(CONF_FUEL, "e5")): vol.In(
-                ["e5", "e10", "diesel", "superplus", "lpg", "cng"]
-            ),
-
+            vol.Required(CONF_FUEL, default=opt(CONF_FUEL, "e5")): vol.In(["e5", "e10", "diesel", "superplus", "lpg", "cng"]),
             vol.Required(CONF_PRICE_THRESHOLD, default=opt(CONF_PRICE_THRESHOLD, 0.0)): vol.Coerce(float),
             vol.Required(CONF_DISTANCE_THRESHOLD, default=opt(CONF_DISTANCE_THRESHOLD, 10.0)): vol.Coerce(float),
 
@@ -94,6 +83,8 @@ class FuelWatcherOptionsFlow(config_entries.OptionsFlow):
             vol.Optional(CONF_ENTITY_CONSUMPTION, default=opt(CONF_ENTITY_CONSUMPTION, "")): str,
             vol.Optional(CONF_ENTITY_ODOMETER, default=opt(CONF_ENTITY_ODOMETER, "")): str,
             vol.Optional(CONF_ENTITY_LOCATION, default=opt(CONF_ENTITY_LOCATION, "")): str,
+
+            vol.Optional(CONF_DYNAMIC_PLZ, default=opt(CONF_DYNAMIC_PLZ, False)): bool,
         })
 
         return self.async_show_form(step_id="init", data_schema=schema)

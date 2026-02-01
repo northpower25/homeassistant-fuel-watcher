@@ -1,7 +1,7 @@
 {
   "domain": "fuel_watcher",
   "name": "Fuel Watcher",
-  "version": "0.0.18",
+  "version": "0.0.19",
   "documentation": "https://github.com/northpower25/homeassistant-fuel-watcher",
   "requirements": [],
   "dependencies": [],

@@ -17,8 +17,6 @@ CONF_ENTITY_CONSUMPTION = "entity_consumption"
 CONF_ENTITY_ODOMETER = "entity_odometer"
 CONF_ENTITY_LOCATION = "entity_location"
 
-CONF_DYNAMIC_PLZ = "dynamic_plz"   # bleibt für Debug/Anzeige
-
 SOURCE_TANKERKOENIG = "tankerkoenig"
 
 SUPPORTED_SOURCES = [

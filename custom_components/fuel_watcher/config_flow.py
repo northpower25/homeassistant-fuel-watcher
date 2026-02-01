@@ -22,13 +22,11 @@ from .const import (
 
 
 class FuelWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Config flow for Fuel Watcher."""
 
     async def async_step_user(self, user_input=None):
         if user_input is not None:
             return self.async_create_entry(title="Fuel Watcher", data=user_input)
 
-        # Alle Entity-Felder als Freitext (kein Entity-Registry-Zugriff) test
         schema = vol.Schema({
             vol.Required(CONF_TANKERKOENIG_API): str,
             vol.Required(CONF_TELEGRAM_TOKEN): str,

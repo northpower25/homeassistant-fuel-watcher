@@ -1,11 +1,13 @@
 {
   "domain": "fuel_watcher",
   "name": "Fuel Watcher",
-  "version": "0.0.13",
+  "version": "0.0.14",
   "documentation": "https://github.com/northpower25/homeassistant-fuel-watcher",
   "requirements": [],
   "dependencies": [],
   "codeowners": ["@northpower25"],
   "iot_class": "cloud_polling",
   "config_flow": true
+  "platforms": ["sensor"]
+
 }

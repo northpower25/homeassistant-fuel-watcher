@@ -57,8 +57,7 @@ Die Integration sendet kontextbasierte Telegram‑Benachrichtigungen und unterst
    - Gib folgende Daten ein:
      - Tankerkoenig API Key  
      - Telegram Bot Token  
-     - Telegram Chat ID  
-     - PLZ  
+     - Telegram Chat ID
      - Radius (km)  
      - Kraftstofftyp  
      - Preisschwelle (optional)  

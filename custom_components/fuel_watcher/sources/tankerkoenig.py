@@ -1,62 +1,75 @@
-import json
-import async_timeout
+from __future__ import annotations
+
 import logging
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from math import radians, sin, cos, sqrt, atan2
+
+from homeassistant.core import HomeAssistant
+from homeassistant.config_entries import ConfigEntry
+
+from .base import fetch_json
+from ..const import CONF_TANKERKOENIG_API, CONF_FUEL, CONF_RADIUS
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def get_cheapest_tankerkoenig(hass, api_key, lat, lon, radius, fuel):
-    """Call Tankerkoenig list API using lat/lng."""
-    url = (
-        "https://creativecommons.tankerkoenig.de/json/list.php"
-        f"?lat={lat}&lng={lon}&rad={radius}&sort=price&type={fuel}&apikey={api_key}"
-    )
+def _distance_km(lat1, lon1, lat2, lon2):
+    """Calculate distance between two coordinates."""
+    R = 6371.0
+    dlat = radians(lat2 - lat1)
+    dlon = radians(lon2 - lon1)
 
-    _LOGGER.warning(f"[FuelWatcher] Tankerkönig URL: {url}")
+    a = sin(dlat / 2)**2 + cos(radians(lat1)) * cos(radians(lat2)) * sin(dlon / 2)**2
+    c = 2 * atan2(sqrt(a), sqrt(1 - a))
 
-    session = async_get_clientsession(hass)
+    return R * c
+
+
+async def get_price_data(hass: HomeAssistant, entry: ConfigEntry):
+    """Fetch fuel price data from Tankerkoenig API."""
+
+    api_key = entry.data.get(CONF_TANKERKOENIG_API)
+    fuel = entry.data.get(CONF_FUEL, "e5")
+    radius = entry.data.get(CONF_RADIUS, 5)
+
+    # Standort des Fahrzeugs
+    location = hass.states.get(entry.data.get("entity_location"))
+    if not location:
+        _LOGGER.warning("No location entity available")
+        return None
 
     try:
-        async with async_timeout.timeout(10):
-            async with session.get(url) as resp:
-                status = resp.status
-                text = await resp.text()
-
-                _LOGGER.warning(f"[FuelWatcher] Tankerkönig HTTP Status: {status}")
-                _LOGGER.warning(f"[FuelWatcher] Tankerkönig Antwort RAW: {text}")
-
-                try:
-                    data = json.loads(text)
-                except Exception as e:
-                    _LOGGER.error(f"[FuelWatcher] JSON Parse Fehler: {e}")
-                    return None
-
-                _LOGGER.warning(f"[FuelWatcher] Tankerkönig Parsed JSON: {data}")
-
-    except Exception as e:
-        _LOGGER.error(f"[FuelWatcher] Tankerkönig API Fehler: {e}")
+        lat = float(location.attributes.get("latitude"))
+        lng = float(location.attributes.get("longitude"))
+    except Exception:
+        _LOGGER.error("Invalid location entity")
         return None
 
-    if data.get("status") != "ok":
-        _LOGGER.error(f"[FuelWatcher] Tankerkönig Status != ok: {data.get('message')}")
+    url = (
+        f"https://creativecommons.tankerkoenig.de/json/list.php?"
+        f"lat={lat}&lng={lng}&rad={radius}&sort=price&type={fuel}&apikey={api_key}"
+    )
+
+    async with hass.helpers.aiohttp_client.async_get_clientsession() as session:
+        data = await fetch_json(session, url)
+
+    if not data or "stations" not in data:
+        _LOGGER.error("Invalid response from Tankerkoenig API")
         return None
 
-    stations = data.get("stations", [])
+    stations = data["stations"]
     if not stations:
-        _LOGGER.error("[FuelWatcher] Tankerkönig: Keine Stationen gefunden")
         return None
 
-    stations = [s for s in stations if s.get("price") is not None]
-    if not stations:
-        _LOGGER.error("[FuelWatcher] Tankerkönig: Keine Preise gefunden")
-        return None
+    # Günstigste Tankstelle auswählen
+    station = min(stations, key=lambda s: s.get("price", 999))
 
-    cheapest = min(stations, key=lambda x: x["price"])
+    distance = _distance_km(lat, lng, station["lat"], station["lng"])
 
     return {
-        "price": cheapest["price"],
-        "name": cheapest["name"],
-        "lat": cheapest.get("lat"),
-        "lng": cheapest.get("lng"),
+        "price": station.get("price"),
+        "station": station.get("name"),
+        "lat": station.get("lat"),
+        "lng": station.get("lng"),
+        "distance_km": round(distance, 2),
+        "fuel": fuel,
     }

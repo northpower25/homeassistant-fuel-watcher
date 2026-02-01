@@ -15,25 +15,39 @@ async def get_cheapest_tankerkoenig(hass, api_key, plz, radius, fuel):
         f"?zip={plz}&rad={radius}&sort=price&type={fuel}&apikey={api_key}"
     )
 
-    _LOGGER.error(f"Tankerkoenig URL: {url}")
+    _LOGGER.warning(f"[FuelWatcher] Tankerkönig URL: {url}")
 
     session = async_get_clientsession(hass)
 
     try:
         async with async_timeout.timeout(10):
             async with session.get(url) as resp:
+                status = resp.status
                 text = await resp.text()
-                _LOGGER.error(f"Tankerkoenig Antwort: {text}")
-                data = json.loads(text)
+
+                _LOGGER.warning(f"[FuelWatcher] Tankerkönig HTTP Status: {status}")
+                _LOGGER.warning(f"[FuelWatcher] Tankerkönig Antwort RAW: {text}")
+
+                try:
+                    data = json.loads(text)
+                except Exception as e:
+                    _LOGGER.error(f"[FuelWatcher] JSON Parse Fehler: {e}")
+                    return None
+
+                _LOGGER.warning(f"[FuelWatcher] Tankerkönig Parsed JSON: {data}")
+
     except Exception as e:
-        raise RuntimeError(f"Tankerkoenig API Fehler: {e}")
+        _LOGGER.error(f"[FuelWatcher] Tankerkönig API Fehler: {e}")
+        return None
 
     stations = data.get("stations", [])
     if not stations:
+        _LOGGER.error("[FuelWatcher] Tankerkönig: Keine Stationen gefunden")
         return None
 
     stations = [s for s in stations if s.get("price") is not None]
     if not stations:
+        _LOGGER.error("[FuelWatcher] Tankerkönig: Keine Preise gefunden")
         return None
 
     cheapest = min(stations, key=lambda x: x["price"])

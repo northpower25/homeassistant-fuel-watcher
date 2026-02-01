@@ -13,6 +13,7 @@ from .statistics import (
     decide_tank_strategy,
 )
 from .const import *
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -24,6 +25,9 @@ async def async_setup_entry(hass, entry, async_add_entities):
     diag_sensor = FuelWatcherDiagnosticsSensor(hass, entry, main_sensor)
 
     async_add_entities([main_sensor, diag_sensor])
+
+    # Sensor-Instanz für Test-Service speichern
+    hass.data[DOMAIN]["sensor"] = main_sensor
 
     async def update(now):
         await main_sensor.async_update()
@@ -53,6 +57,7 @@ class FuelWatcherSensor(SensorEntity):
         self._attr_native_value = None
         self._attr_extra_state_attributes = {}
 
+        # Diagnose-Daten
         self._diag = {
             "last_update_ok": False,
             "last_error": None,
@@ -60,6 +65,9 @@ class FuelWatcherSensor(SensorEntity):
             "last_price_data": None,
             "last_distance": None,
             "last_strategy": None,
+            "health_score": 0,
+            "checks": {},
+            "manual_test": None,
         }
 
     async def async_update(self):
@@ -162,10 +170,82 @@ class FuelWatcherSensor(SensorEntity):
             "strategy_reason": reason,
         }
 
+        # --- Health Check ---
+        checks = {}
+        checks["price_source"] = data is not None
+        checks["vehicle_data"] = vehicle is not None and any(vehicle.values())
+        checks["location_valid"] = distance_info is not None
+        checks["strategy_valid"] = decision is not None
+        checks["history_ok"] = True
+        checks["telegram_ready"] = bool(self._token and self._chat)
+
+        health_score = sum(1 for v in checks.values() if v)
+
+        self._diag["checks"] = checks
+        self._diag["health_score"] = health_score
+
         self._diag["last_update_ok"] = True
         self._diag["last_error"] = None
 
         _LOGGER.debug("FuelWatcher: Update abgeschlossen")
+
+    # ---------------------------------------------------------
+    #   MANUELLE TEST-ROUTINE
+    # ---------------------------------------------------------
+
+    async def run_test(self):
+        _LOGGER.warning("FuelWatcher: Starte manuelle Testdiagnose")
+
+        results = {}
+
+        # Preisquelle
+        try:
+            data = await get_cheapest(
+                self.hass,
+                self._source,
+                self._api,
+                self._plz,
+                self._radius,
+                self._fuel
+            )
+            results["price_source"] = data is not None
+        except Exception:
+            results["price_source"] = False
+
+        # Fahrzeugdaten
+        try:
+            vehicle = get_vehicle_data(self.hass, self._entry)
+            results["vehicle_data"] = vehicle is not None and any(vehicle.values())
+        except Exception:
+            results["vehicle_data"] = False
+
+        # Standort
+        try:
+            loc = vehicle.get("location")
+            results["location_valid"] = loc is not None
+        except Exception:
+            results["location_valid"] = False
+
+        # Strategie
+        try:
+            now = dt_util.utcnow()
+            decision, reason = decide_tank_strategy(now, vehicle.get("range"))
+            results["strategy_valid"] = decision is not None
+        except Exception:
+            results["strategy_valid"] = False
+
+        # Historie
+        try:
+            update_history(vehicle.get("range"), vehicle.get("odometer"))
+            results["history_ok"] = True
+        except Exception:
+            results["history_ok"] = False
+
+        # Telegram
+        results["telegram_ready"] = bool(self._token and self._chat)
+
+        self._diag["manual_test"] = results
+        _LOGGER.warning(f"FuelWatcher Testdiagnose: {results}")
 
 
 class FuelWatcherDiagnosticsSensor(SensorEntity):

@@ -6,13 +6,11 @@ from homeassistant.helpers.aiohttp_client import async_get_clientsession
 _LOGGER = logging.getLogger(__name__)
 
 
-async def get_cheapest_tankerkoenig(hass, api_key, plz, radius, fuel):
-    plz = str(plz).strip()
-    radius = int(radius)
-
+async def get_cheapest_tankerkoenig(hass, api_key, lat, lon, radius, fuel):
+    """Call Tankerkoenig list API using lat/lng."""
     url = (
         "https://creativecommons.tankerkoenig.de/json/list.php"
-        f"?zip={plz}&rad={radius}&sort=price&type={fuel}&apikey={api_key}"
+        f"?lat={lat}&lng={lon}&rad={radius}&sort=price&type={fuel}&apikey={api_key}"
     )
 
     _LOGGER.warning(f"[FuelWatcher] Tankerkönig URL: {url}")
@@ -38,6 +36,10 @@ async def get_cheapest_tankerkoenig(hass, api_key, plz, radius, fuel):
 
     except Exception as e:
         _LOGGER.error(f"[FuelWatcher] Tankerkönig API Fehler: {e}")
+        return None
+
+    if data.get("status") != "ok":
+        _LOGGER.error(f"[FuelWatcher] Tankerkönig Status != ok: {data.get('message')}")
         return None
 
     stations = data.get("stations", [])

@@ -5,6 +5,19 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from .main import FuelWatcherSensor
 from .diagnostics import FuelWatcherDiagnosticsSensor
 from .location import FuelWatcherLocationSensor
+from .derived import (
+    FuelWatcherPriceSensor,
+    FuelWatcherStationNameSensor,
+    FuelWatcherDistanceSensor,
+    FuelWatcherRangeSensor,
+    FuelWatcherFuelLevelSensor,
+    FuelWatcherConsumptionSensor,
+    FuelWatcherOdometerSensor,
+    FuelWatcherStrategyDecisionSensor,
+    FuelWatcherStrategyReasonSensor,
+    FuelWatcherHealthScoreSensor,
+    FuelWatcherLastErrorSensor,
+)
 
 
 async def async_setup_entry(
@@ -17,8 +30,18 @@ async def async_setup_entry(
     diag_sensor = FuelWatcherDiagnosticsSensor(hass, entry, main_sensor)
     location_sensor = FuelWatcherLocationSensor(hass, entry)
 
-    async_add_entities([
-        main_sensor,
-        diag_sensor,
-        location_sensor,
-    ])
+    derived_sensors = [
+        FuelWatcherPriceSensor(main_sensor),
+        FuelWatcherStationNameSensor(main_sensor),
+        FuelWatcherDistanceSensor(main_sensor),
+        FuelWatcherRangeSensor(main_sensor),
+        FuelWatcherFuelLevelSensor(main_sensor),
+        FuelWatcherConsumptionSensor(main_sensor),
+        FuelWatcherOdometerSensor(main_sensor),
+        FuelWatcherStrategyDecisionSensor(main_sensor),
+        FuelWatcherStrategyReasonSensor(main_sensor),
+        FuelWatcherHealthScoreSensor(main_sensor),
+        FuelWatcherLastErrorSensor(main_sensor),
+    ]
+
+    async_add_entities([main_sensor, diag_sensor, location_sensor] + derived_sensors)

@@ -1,6 +1,8 @@
-from .const import DOMAIN
+from .tankerkoenig import get_cheapest_tankerkoenig
+from ..const import SOURCE_TANKERKOENIG
 
-async def async_setup_entry(hass, entry):
-    """Set up Fuel Watcher from a config entry."""
-    await hass.config_entries.async_forward_entry_setups(entry, ["sensor"])
-    return True
+async def get_cheapest(hass, source, api_key, plz, radius, fuel):
+    if source == SOURCE_TANKERKOENIG:
+        return await get_cheapest_tankerkoenig(hass, api_key, plz, radius, fuel)
+
+    return None

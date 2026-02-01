@@ -1,5 +1,6 @@
 import logging
 from datetime import timedelta
+
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.util import dt as dt_util
@@ -12,8 +13,20 @@ from .statistics import (
     update_history,
     decide_tank_strategy,
 )
-from .const import *
-from .const import DOMAIN
+from .const import (
+    DOMAIN,
+    CONF_TANKERKOENIG_API,
+    CONF_TELEGRAM_TOKEN,
+    CONF_TELEGRAM_CHAT_ID,
+    CONF_PLZ,
+    CONF_RADIUS,
+    CONF_FUEL,
+    CONF_SOURCE,
+    CONF_PRICE_THRESHOLD,
+    CONF_DISTANCE_THRESHOLD,
+    CONF_ENTITY_LOCATION,
+    SOURCE_TANKERKOENIG,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -27,6 +40,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_add_entities([main_sensor, diag_sensor])
 
     # Sensor-Instanz für Test-Service speichern
+    if DOMAIN not in hass.data:
+        hass.data[DOMAIN] = {}
     hass.data[DOMAIN]["sensor"] = main_sensor
 
     async def update(now):
@@ -57,7 +72,6 @@ class FuelWatcherSensor(SensorEntity):
         self._attr_native_value = None
         self._attr_extra_state_attributes = {}
 
-        # Diagnose-Daten
         self._diag = {
             "last_update_ok": False,
             "last_error": None,
@@ -81,7 +95,7 @@ class FuelWatcherSensor(SensorEntity):
                 self._api,
                 self._plz,
                 self._radius,
-                self._fuel
+                self._fuel,
             )
             self._diag["last_price_data"] = data
         except Exception as e:
@@ -123,14 +137,11 @@ class FuelWatcherSensor(SensorEntity):
         # --- Standort robust ---
         distance_info = None
         try:
-            # Fall 1: lat,lon-String
             if isinstance(location_entity, str) and "," in location_entity:
                 lat_str, lon_str = location_entity.split(",")
                 vlat = float(lat_str)
                 vlon = float(lon_str)
                 distance_info = haversine_km(vlat, vlon, station_lat, station_lng)
-
-            # Fall 2: device_tracker / person / sensor
             else:
                 loc_state = self.hass.states.get(self._entry.data.get(CONF_ENTITY_LOCATION))
                 if loc_state:
@@ -138,7 +149,6 @@ class FuelWatcherSensor(SensorEntity):
                     lon = loc_state.attributes.get("longitude")
                     if lat is not None and lon is not None:
                         distance_info = haversine_km(float(lat), float(lon), station_lat, station_lng)
-
         except Exception as e:
             _LOGGER.error(f"FuelWatcher: Fehler in Standortberechnung: {e}")
 
@@ -183,15 +193,10 @@ class FuelWatcherSensor(SensorEntity):
 
         self._diag["checks"] = checks
         self._diag["health_score"] = health_score
-
         self._diag["last_update_ok"] = True
         self._diag["last_error"] = None
 
         _LOGGER.debug("FuelWatcher: Update abgeschlossen")
-
-    # ---------------------------------------------------------
-    #   MANUELLE TEST-ROUTINE
-    # ---------------------------------------------------------
 
     async def run_test(self):
         _LOGGER.warning("FuelWatcher: Starte manuelle Testdiagnose")
@@ -206,11 +211,12 @@ class FuelWatcherSensor(SensorEntity):
                 self._api,
                 self._plz,
                 self._radius,
-                self._fuel
+                self._fuel,
             )
             results["price_source"] = data is not None
         except Exception:
             results["price_source"] = False
+            data = None
 
         # Fahrzeugdaten
         try:
@@ -218,6 +224,7 @@ class FuelWatcherSensor(SensorEntity):
             results["vehicle_data"] = vehicle is not None and any(vehicle.values())
         except Exception:
             results["vehicle_data"] = False
+            vehicle = {}
 
         # Standort
         try:

@@ -1,18 +1,30 @@
+import json
 import async_timeout
+import logging
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
+_LOGGER = logging.getLogger(__name__)
+
+
 async def get_cheapest_tankerkoenig(hass, api_key, plz, radius, fuel):
+    plz = str(plz).strip()
+    radius = int(radius)
+
     url = (
         "https://creativecommons.tankerkoenig.de/json/list.php"
         f"?zip={plz}&rad={radius}&sort=price&type={fuel}&apikey={api_key}"
     )
+
+    _LOGGER.error(f"Tankerkoenig URL: {url}")
 
     session = async_get_clientsession(hass)
 
     try:
         async with async_timeout.timeout(10):
             async with session.get(url) as resp:
-                data = await resp.json()
+                text = await resp.text()
+                _LOGGER.error(f"Tankerkoenig Antwort: {text}")
+                data = json.loads(text)
     except Exception as e:
         raise RuntimeError(f"Tankerkoenig API Fehler: {e}")
 

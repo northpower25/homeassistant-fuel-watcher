@@ -5,22 +5,18 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.util import dt as dt_util
 
 from ..sources import get_cheapest
-from ..sources.geocode import get_dynamic_postcode
 from ..vehicle import get_vehicle_data
 from ..statistics import haversine_km, update_history, decide_tank_strategy
 from ..const import (
-    DOMAIN,
     CONF_TANKERKOENIG_API,
     CONF_TELEGRAM_TOKEN,
     CONF_TELEGRAM_CHAT_ID,
-    CONF_PLZ,
     CONF_RADIUS,
     CONF_FUEL,
     CONF_SOURCE,
     CONF_PRICE_THRESHOLD,
     CONF_DISTANCE_THRESHOLD,
     CONF_ENTITY_LOCATION,
-    CONF_DYNAMIC_PLZ,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -41,11 +37,9 @@ class FuelWatcherSensor(SensorEntity):
         self._chat = entry.data.get(CONF_TELEGRAM_CHAT_ID)
 
         # Konfiguration
-        self._plz = entry.options.get(CONF_PLZ) or entry.data.get(CONF_PLZ)
         self._radius = entry.options.get(CONF_RADIUS) or entry.data.get(CONF_RADIUS)
         self._fuel = entry.options.get(CONF_FUEL) or entry.data.get(CONF_FUEL)
         self._source = entry.options.get(CONF_SOURCE) or entry.data.get(CONF_SOURCE)
-        self._dynamic_plz = entry.options.get(CONF_DYNAMIC_PLZ, False)
 
         self._price_threshold = float(entry.options.get(CONF_PRICE_THRESHOLD, entry.data.get(CONF_PRICE_THRESHOLD, 0.0)))
         self._distance_threshold = float(entry.options.get(CONF_DISTANCE_THRESHOLD, entry.data.get(CONF_DISTANCE_THRESHOLD, 10.0)))
@@ -64,7 +58,6 @@ class FuelWatcherSensor(SensorEntity):
             "last_price_data": None,
             "last_distance": None,
             "last_strategy": None,
-            "dynamic_plz": None,
             "health_score": 0,
             "checks": {},
             "manual_test": None,
@@ -93,16 +86,7 @@ class FuelWatcherSensor(SensorEntity):
             return
 
         # ---------------------------------------------------------
-        # 2) Dynamische PLZ (nur für Debug/Strategie)
-        # ---------------------------------------------------------
-        if self._dynamic_plz:
-            dynamic_plz = await get_dynamic_postcode(self.hass, loc_entity_id)
-            self._diag["dynamic_plz"] = dynamic_plz or self._plz
-        else:
-            self._diag["dynamic_plz"] = None
-
-        # ---------------------------------------------------------
-        # 3) Preisquelle (Tankerkoenig via lat/lng)
+        # 2) Preisquelle (Tankerkoenig via lat/lng)
         # ---------------------------------------------------------
         try:
             data = await get_cheapest(
@@ -131,7 +115,7 @@ class FuelWatcherSensor(SensorEntity):
         station_lng = data.get("lng")
 
         # ---------------------------------------------------------
-        # 4) Fahrzeugdaten
+        # 3) Fahrzeugdaten
         # ---------------------------------------------------------
         try:
             vehicle = get_vehicle_data(self.hass, self._entry)
@@ -148,7 +132,7 @@ class FuelWatcherSensor(SensorEntity):
         location_entity = vehicle.get("location")
 
         # ---------------------------------------------------------
-        # 5) Historie aktualisieren
+        # 4) Historie aktualisieren
         # ---------------------------------------------------------
         try:
             update_history(range_km, odometer)
@@ -156,7 +140,7 @@ class FuelWatcherSensor(SensorEntity):
             _LOGGER.error(f"FuelWatcher: Fehler in update_history: {e}")
 
         # ---------------------------------------------------------
-        # 6) Distanz berechnen
+        # 5) Distanz berechnen
         # ---------------------------------------------------------
         distance_info = None
         try:
@@ -168,7 +152,7 @@ class FuelWatcherSensor(SensorEntity):
         self._diag["last_distance"] = distance_info
 
         # ---------------------------------------------------------
-        # 7) Strategie berechnen
+        # 6) Strategie berechnen
         # ---------------------------------------------------------
         try:
             now = dt_util.utcnow()
@@ -180,7 +164,7 @@ class FuelWatcherSensor(SensorEntity):
             decision, reason = None, None
 
         # ---------------------------------------------------------
-        # 8) Sensorwerte setzen
+        # 7) Sensorwerte setzen
         # ---------------------------------------------------------
         self._attr_native_value = price
         self._attr_extra_state_attributes = {
@@ -200,7 +184,7 @@ class FuelWatcherSensor(SensorEntity):
         }
 
         # ---------------------------------------------------------
-        # 9) Health-Check
+        # 8) Health-Check
         # ---------------------------------------------------------
         checks = {
             "price_source": data is not None,

@@ -7,13 +7,12 @@ from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 
 from .base import fetch_json
-from ..const import CONF_TANKERKOENIG_API, CONF_FUEL, CONF_RADIUS
+from ..const import CONF_TANKERKOENIG_API, CONF_FUEL, CONF_RADIUS, CONF_ENTITY_LOCATION
 
 _LOGGER = logging.getLogger(__name__)
 
 
 def _distance_km(lat1, lon1, lat2, lon2):
-    """Calculate distance between two coordinates."""
     R = 6371.0
     dlat = radians(lat2 - lat1)
     dlon = radians(lon2 - lon1)
@@ -25,23 +24,23 @@ def _distance_km(lat1, lon1, lat2, lon2):
 
 
 async def get_price_data(hass: HomeAssistant, entry: ConfigEntry):
-    """Fetch fuel price data from Tankerkoenig API."""
-
     api_key = entry.data.get(CONF_TANKERKOENIG_API)
     fuel = entry.data.get(CONF_FUEL, "e5")
     radius = entry.data.get(CONF_RADIUS, 5)
 
     # Standort des Fahrzeugs
-    location = hass.states.get(entry.data.get("entity_location"))
+    location_entity = entry.data.get(CONF_ENTITY_LOCATION)
+    location = hass.states.get(location_entity)
+
     if not location:
-        _LOGGER.warning("No location entity available")
+        _LOGGER.warning("No location entity available: %s", location_entity)
         return None
 
     try:
         lat = float(location.attributes.get("latitude"))
         lng = float(location.attributes.get("longitude"))
     except Exception:
-        _LOGGER.error("Invalid location entity")
+        _LOGGER.error("Invalid location entity: %s", location_entity)
         return None
 
     url = (

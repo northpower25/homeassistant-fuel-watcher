@@ -50,7 +50,6 @@ class FuelWatcherSensor(SensorEntity):
 
         self._attr_name = "Fuel Watcher"
         self._attr_native_unit_of_measurement = "€/l"
-        self._last_price = None
         self._attr_native_value = None
         self._attr_extra_state_attributes = {}
 
@@ -116,11 +115,14 @@ class FuelWatcherSensor(SensorEntity):
         # --- Standort robust ---
         distance_info = None
         try:
+            # Fall 1: lat,lon-String
             if isinstance(location_entity, str) and "," in location_entity:
                 lat_str, lon_str = location_entity.split(",")
                 vlat = float(lat_str)
                 vlon = float(lon_str)
                 distance_info = haversine_km(vlat, vlon, station_lat, station_lng)
+
+            # Fall 2: device_tracker / person / sensor
             else:
                 loc_state = self.hass.states.get(self._entry.data.get(CONF_ENTITY_LOCATION))
                 if loc_state:
@@ -128,6 +130,7 @@ class FuelWatcherSensor(SensorEntity):
                     lon = loc_state.attributes.get("longitude")
                     if lat is not None and lon is not None:
                         distance_info = haversine_km(float(lat), float(lon), station_lat, station_lng)
+
         except Exception as e:
             _LOGGER.error(f"FuelWatcher: Fehler in Standortberechnung: {e}")
 

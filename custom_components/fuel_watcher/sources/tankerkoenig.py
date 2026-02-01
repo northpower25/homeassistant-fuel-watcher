@@ -1,5 +1,6 @@
 import async_timeout
 
+
 async def get_cheapest_tankerkoenig(hass, api_key, plz, radius, fuel):
     url = (
         "https://creativecommons.tankerkoenig.de/json/list.php"

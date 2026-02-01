@@ -1,13 +1,16 @@
-import requests
+import async_timeout
 
-def send_telegram(token, chat_id, message):
+async def send_telegram(hass, token, chat_id, text):
     if not token or not chat_id:
         return
+
     url = f"https://api.telegram.org/bot{token}/sendMessage"
-    payload = {"chat_id": chat_id, "text": message}
+    session = hass.helpers.aiohttp_client.async_get_clientsession()
+
+    payload = {"chat_id": chat_id, "text": text}
+
     try:
-        r = requests.post(url, json=payload, timeout=10)
-        if r.status_code != 200:
-            print("Telegram error:", r.text)
-    except Exception as e:
-        print("Telegram exception:", e)
+        async with async_timeout.timeout(10):
+            await session.post(url, json=payload)
+    except Exception:
+        pass

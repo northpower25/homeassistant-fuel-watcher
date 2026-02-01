@@ -1,15 +1,18 @@
 from __future__ import annotations
 
-from datetime import datetime
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 
 from ..statistics import get_expected_consumption_tomorrow
 from ..sources import get_price_data
-from ..vehicle import get_vehicle_data
-from ..location import get_location_data
-from ..const import DOMAIN
+from ..const import (
+    DOMAIN,
+    CONF_ENTITY_FUEL_LEVEL,
+    CONF_ENTITY_RANGE,
+    CONF_ENTITY_CONSUMPTION,
+    CONF_ENTITY_ODOMETER,
+)
 
 
 class FuelWatcherSensor(SensorEntity):
@@ -21,7 +24,7 @@ class FuelWatcherSensor(SensorEntity):
         self._attr_name = "Fuel Watcher"
         self._attr_unique_id = f"{DOMAIN}_{entry.entry_id}"
         self._state = None
-        self._attrs = {}
+        self._attrs: dict = {}
 
     @property
     def native_value(self):
@@ -54,41 +57,69 @@ class FuelWatcherSensor(SensorEntity):
             self._attrs["distance_km"] = price_data.get("distance_km")
             self._attrs["fuel"] = price_data.get("fuel")
 
-        # --- 2. Fahrzeugdaten -------------------------------------------------
-        vehicle = get_vehicle_data(self.hass, self.entry)
-        if vehicle:
-            self._attrs["range_km"] = vehicle.get("range_km")
-            self._attrs["fuel_level"] = vehicle.get("fuel_level")
-            self._attrs["consumption_l_100km"] = vehicle.get("consumption_l_100km")
-            self._attrs["odometer"] = vehicle.get("odometer")
+        # --- 2. Fahrzeugdaten aus konfigurierten Entitäten -------------------
+        self._update_vehicle_data()
 
-        # --- 3. Standortdaten -------------------------------------------------
-        location = get_location_data(self.hass, self.entry)
-        if location:
-            self._attrs["vehicle_lat"] = location.get("lat")
-            self._attrs["vehicle_lng"] = location.get("lng")
-
-        # --- 4. Erwarteter Verbrauch morgen ----------------------------------
+        # --- 3. Erwarteter Verbrauch morgen ----------------------------------
         expected_tomorrow = get_expected_consumption_tomorrow(self.entry)
         self._attrs["expected_consumption_tomorrow"] = expected_tomorrow
 
-        # --- 5. Strategie -----------------------------------------------------
+        # --- 4. Strategie -----------------------------------------------------
         decision, reason = self._compute_strategy(expected_tomorrow)
         self._attrs["strategy_decision"] = decision
         self._attrs["strategy_reason"] = reason
 
-        # --- 6. Health Score --------------------------------------------------
+        # --- 5. Health Score --------------------------------------------------
         self._attrs["health_score"] = self._compute_health_score()
+
+    # -------------------------------------------------------------------------
+    # Fahrzeugdaten
+    # -------------------------------------------------------------------------
+    def _update_vehicle_data(self):
+        data = self.entry.data
+        options = self.entry.options or {}
+
+        def get_entity_id(key):
+            return options.get(key) or data.get(key)
+
+        # Reichweite
+        if entity_id := get_entity_id(CONF_ENTITY_RANGE):
+            if state := self.hass.states.get(entity_id):
+                try:
+                    self._attrs["range_km"] = float(state.state)
+                except (TypeError, ValueError):
+                    pass
+
+        # Tankfüllstand
+        if entity_id := get_entity_id(CONF_ENTITY_FUEL_LEVEL):
+            if state := self.hass.states.get(entity_id):
+                try:
+                    self._attrs["fuel_level"] = float(state.state)
+                except (TypeError, ValueError):
+                    pass
+
+        # Verbrauch
+        if entity_id := get_entity_id(CONF_ENTITY_CONSUMPTION):
+            if state := self.hass.states.get(entity_id):
+                try:
+                    self._attrs["consumption_l_100km"] = float(state.state)
+                except (TypeError, ValueError):
+                    pass
+
+        # Odometer
+        if entity_id := get_entity_id(CONF_ENTITY_ODOMETER):
+            if state := self.hass.states.get(entity_id):
+                try:
+                    self._attrs["odometer"] = float(state.state)
+                except (TypeError, ValueError):
+                    pass
 
     # -------------------------------------------------------------------------
     # Strategie-Logik
     # -------------------------------------------------------------------------
     def _compute_strategy(self, expected_tomorrow: int):
-        """Compute tanking strategy based on price, range and expected consumption."""
-
         price = self._attrs.get("price")
         range_km = self._attrs.get("range_km")
-        distance = self._attrs.get("distance_km")
 
         if price is None or range_km is None:
             return "Unbekannt", "Unzureichende Daten"
@@ -119,7 +150,6 @@ class FuelWatcherSensor(SensorEntity):
     # Health Score
     # -------------------------------------------------------------------------
     def _compute_health_score(self):
-        """Simple health score based on available data."""
         score = 100
 
         if self._attrs.get("price") is None:

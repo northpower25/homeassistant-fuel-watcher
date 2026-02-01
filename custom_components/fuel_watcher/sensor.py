@@ -32,10 +32,6 @@ async def async_setup_entry(hass, entry, async_add_entities):
     async_track_time_interval(hass, update, SCAN_INTERVAL)
 
 
-# ---------------------------------------------------------
-#   HAUPT-SENSOR
-# ---------------------------------------------------------
-
 class FuelWatcherSensor(SensorEntity):
     def __init__(self, hass, entry):
         self.hass = hass
@@ -58,7 +54,6 @@ class FuelWatcherSensor(SensorEntity):
         self._attr_native_value = None
         self._attr_extra_state_attributes = {}
 
-        # Diagnose-Daten
         self._diag = {
             "last_update_ok": False,
             "last_error": None,
@@ -73,7 +68,14 @@ class FuelWatcherSensor(SensorEntity):
 
         # --- Preisquelle ---
         try:
-            data = get_cheapest(self._source, self._api, self._plz, self._radius, self._fuel)
+            data = await get_cheapest(
+                self.hass,
+                self._source,
+                self._api,
+                self._plz,
+                self._radius,
+                self._fuel
+            )
             self._diag["last_price_data"] = data
         except Exception as e:
             self._diag["last_error"] = f"Preisquelle Fehler: {e}"
@@ -114,14 +116,11 @@ class FuelWatcherSensor(SensorEntity):
         # --- Standort robust ---
         distance_info = None
         try:
-            # Fall 1: lat,lon-String
             if isinstance(location_entity, str) and "," in location_entity:
                 lat_str, lon_str = location_entity.split(",")
                 vlat = float(lat_str)
                 vlon = float(lon_str)
                 distance_info = haversine_km(vlat, vlon, station_lat, station_lng)
-
-            # Fall 2: device_tracker / person / sensor mit Attributen
             else:
                 loc_state = self.hass.states.get(self._entry.data.get(CONF_ENTITY_LOCATION))
                 if loc_state:
@@ -129,7 +128,6 @@ class FuelWatcherSensor(SensorEntity):
                     lon = loc_state.attributes.get("longitude")
                     if lat is not None and lon is not None:
                         distance_info = haversine_km(float(lat), float(lon), station_lat, station_lng)
-
         except Exception as e:
             _LOGGER.error(f"FuelWatcher: Fehler in Standortberechnung: {e}")
 
@@ -167,10 +165,6 @@ class FuelWatcherSensor(SensorEntity):
         _LOGGER.debug("FuelWatcher: Update abgeschlossen")
 
 
-# ---------------------------------------------------------
-#   DIAGNOSE-SENSOR
-# ---------------------------------------------------------
-
 class FuelWatcherDiagnosticsSensor(SensorEntity):
     def __init__(self, hass, entry, main_sensor):
         self.hass = hass
@@ -183,6 +177,5 @@ class FuelWatcherDiagnosticsSensor(SensorEntity):
 
     def update_from_main(self):
         diag = self._main._diag
-
         self._attr_native_value = "ok" if diag["last_update_ok"] else "error"
         self._attr_extra_state_attributes = diag

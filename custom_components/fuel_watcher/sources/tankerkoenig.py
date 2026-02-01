@@ -1,5 +1,5 @@
 import async_timeout
-
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 async def get_cheapest_tankerkoenig(hass, api_key, plz, radius, fuel):
     url = (
@@ -7,7 +7,7 @@ async def get_cheapest_tankerkoenig(hass, api_key, plz, radius, fuel):
         f"?zip={plz}&rad={radius}&sort=price&type={fuel}&apikey={api_key}"
     )
 
-    session = hass.helpers.aiohttp_client.async_get_clientsession()
+    session = async_get_clientsession(hass)
 
     try:
         async with async_timeout.timeout(10):

@@ -17,7 +17,6 @@ from .const import (
     CONF_ENTITY_CONSUMPTION,
     CONF_ENTITY_ODOMETER,
     CONF_ENTITY_LOCATION,
-    CONF_DYNAMIC_PLZ,
     SUPPORTED_SOURCES,
 )
 
@@ -45,8 +44,6 @@ class FuelWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Optional(CONF_ENTITY_CONSUMPTION, default=""): str,
             vol.Optional(CONF_ENTITY_ODOMETER, default=""): str,
             vol.Optional(CONF_ENTITY_LOCATION, default=""): str,
-
-            vol.Optional(CONF_DYNAMIC_PLZ, default=False): bool,
         })
 
         return self.async_show_form(step_id="user", data_schema=schema)
@@ -83,8 +80,6 @@ class FuelWatcherOptionsFlow(config_entries.OptionsFlow):
             vol.Optional(CONF_ENTITY_CONSUMPTION, default=opt(CONF_ENTITY_CONSUMPTION, "")): str,
             vol.Optional(CONF_ENTITY_ODOMETER, default=opt(CONF_ENTITY_ODOMETER, "")): str,
             vol.Optional(CONF_ENTITY_LOCATION, default=opt(CONF_ENTITY_LOCATION, "")): str,
-
-            vol.Optional(CONF_DYNAMIC_PLZ, default=opt(CONF_DYNAMIC_PLZ, False)): bool,
         })
 
         return self.async_show_form(step_id="init", data_schema=schema)

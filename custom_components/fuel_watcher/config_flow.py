@@ -18,10 +18,18 @@ from .const import (
     CONF_ENTITY_ODOMETER,
     CONF_ENTITY_LOCATION,
     SUPPORTED_SOURCES,
+    CONF_CONSUMPTION_MONDAY,
+    CONF_CONSUMPTION_TUESDAY,
+    CONF_CONSUMPTION_WEDNESDAY,
+    CONF_CONSUMPTION_THURSDAY,
+    CONF_CONSUMPTION_FRIDAY,
+    CONF_CONSUMPTION_SATURDAY,
+    CONF_CONSUMPTION_SUNDAY,
 )
 
 
 class FuelWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Handle the initial setup of Fuel Watcher."""
 
     async def async_step_user(self, user_input=None):
         if user_input is not None:
@@ -44,6 +52,15 @@ class FuelWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Optional(CONF_ENTITY_CONSUMPTION, default=""): str,
             vol.Optional(CONF_ENTITY_ODOMETER, default=""): str,
             vol.Optional(CONF_ENTITY_LOCATION, default=""): str,
+
+            # Neue Wochentags-Verbrauchswerte
+            vol.Optional(CONF_CONSUMPTION_MONDAY, default=50): vol.Coerce(int),
+            vol.Optional(CONF_CONSUMPTION_TUESDAY, default=50): vol.Coerce(int),
+            vol.Optional(CONF_CONSUMPTION_WEDNESDAY, default=50): vol.Coerce(int),
+            vol.Optional(CONF_CONSUMPTION_THURSDAY, default=50): vol.Coerce(int),
+            vol.Optional(CONF_CONSUMPTION_FRIDAY, default=60): vol.Coerce(int),
+            vol.Optional(CONF_CONSUMPTION_SATURDAY, default=20): vol.Coerce(int),
+            vol.Optional(CONF_CONSUMPTION_SUNDAY, default=10): vol.Coerce(int),
         })
 
         return self.async_show_form(step_id="user", data_schema=schema)
@@ -55,6 +72,7 @@ class FuelWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class FuelWatcherOptionsFlow(config_entries.OptionsFlow):
+    """Handle updates to the configuration."""
 
     def __init__(self, entry):
         self.entry = entry
@@ -80,6 +98,15 @@ class FuelWatcherOptionsFlow(config_entries.OptionsFlow):
             vol.Optional(CONF_ENTITY_CONSUMPTION, default=opt(CONF_ENTITY_CONSUMPTION, "")): str,
             vol.Optional(CONF_ENTITY_ODOMETER, default=opt(CONF_ENTITY_ODOMETER, "")): str,
             vol.Optional(CONF_ENTITY_LOCATION, default=opt(CONF_ENTITY_LOCATION, "")): str,
+
+            # Neue Wochentags-Verbrauchswerte
+            vol.Optional(CONF_CONSUMPTION_MONDAY, default=opt(CONF_CONSUMPTION_MONDAY, 50)): vol.Coerce(int),
+            vol.Optional(CONF_CONSUMPTION_TUESDAY, default=opt(CONF_CONSUMPTION_TUESDAY, 50)): vol.Coerce(int),
+            vol.Optional(CONF_CONSUMPTION_WEDNESDAY, default=opt(CONF_CONSUMPTION_WEDNESDAY, 50)): vol.Coerce(int),
+            vol.Optional(CONF_CONSUMPTION_THURSDAY, default=opt(CONF_CONSUMPTION_THURSDAY, 50)): vol.Coerce(int),
+            vol.Optional(CONF_CONSUMPTION_FRIDAY, default=opt(CONF_CONSUMPTION_FRIDAY, 60)): vol.Coerce(int),
+            vol.Optional(CONF_CONSUMPTION_SATURDAY, default=opt(CONF_CONSUMPTION_SATURDAY, 20)): vol.Coerce(int),
+            vol.Optional(CONF_CONSUMPTION_SUNDAY, default=opt(CONF_CONSUMPTION_SUNDAY, 10)): vol.Coerce(int),
         })
 
         return self.async_show_form(step_id="init", data_schema=schema)

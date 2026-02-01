@@ -1,12 +1,12 @@
+from __future__ import annotations
+
 from homeassistant.components.sensor import SensorEntity
-from homeassistant.core import HomeAssistant
-from homeassistant.config_entries import ConfigEntry
 
 
 class BaseDerivedSensor(SensorEntity):
     """Base class for derived Fuel Watcher sensors."""
 
-    def __init__(self, main_sensor, name, attribute, unit=None):
+    def __init__(self, main_sensor, name: str, attribute: str, unit: str | None = None):
         self._main = main_sensor
         self._attr_name = name
         self._attribute = attribute
@@ -15,14 +15,18 @@ class BaseDerivedSensor(SensorEntity):
 
     @property
     def device_info(self):
+        """Group all derived sensors under the same device as the main sensor."""
         return self._main.device_info
 
     @property
     def native_value(self):
+        """Return the derived attribute value from the main sensor."""
         return self._main.extra_state_attributes.get(self._attribute)
 
 
-# --- Preis & Tankstelle -------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Preis & Tankstelle
+# ---------------------------------------------------------------------------
 
 class FuelWatcherPriceSensor(BaseDerivedSensor):
     def __init__(self, main_sensor):
@@ -39,7 +43,9 @@ class FuelWatcherDistanceSensor(BaseDerivedSensor):
         super().__init__(main_sensor, "Fuel Watcher Entfernung", "distance_km", "km")
 
 
-# --- Fahrzeugdaten ------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Fahrzeugdaten
+# ---------------------------------------------------------------------------
 
 class FuelWatcherRangeSensor(BaseDerivedSensor):
     def __init__(self, main_sensor):
@@ -53,7 +59,12 @@ class FuelWatcherFuelLevelSensor(BaseDerivedSensor):
 
 class FuelWatcherConsumptionSensor(BaseDerivedSensor):
     def __init__(self, main_sensor):
-        super().__init__(main_sensor, "Fuel Watcher Verbrauch", "consumption_l_100km", "l/100km")
+        super().__init__(
+            main_sensor,
+            "Fuel Watcher Verbrauch",
+            "consumption_l_100km",
+            "l/100km",
+        )
 
 
 class FuelWatcherOdometerSensor(BaseDerivedSensor):
@@ -61,7 +72,9 @@ class FuelWatcherOdometerSensor(BaseDerivedSensor):
         super().__init__(main_sensor, "Fuel Watcher Kilometerstand", "odometer", "km")
 
 
-# --- Strategie ----------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Strategie
+# ---------------------------------------------------------------------------
 
 class FuelWatcherStrategyDecisionSensor(BaseDerivedSensor):
     def __init__(self, main_sensor):
@@ -73,7 +86,9 @@ class FuelWatcherStrategyReasonSensor(BaseDerivedSensor):
         super().__init__(main_sensor, "Fuel Watcher Begründung", "strategy_reason")
 
 
-# --- Diagnose -----------------------------------------------------------------
+# ---------------------------------------------------------------------------
+# Diagnose
+# ---------------------------------------------------------------------------
 
 class FuelWatcherHealthScoreSensor(BaseDerivedSensor):
     def __init__(self, main_sensor):
@@ -83,3 +98,17 @@ class FuelWatcherHealthScoreSensor(BaseDerivedSensor):
 class FuelWatcherLastErrorSensor(BaseDerivedSensor):
     def __init__(self, main_sensor):
         super().__init__(main_sensor, "Fuel Watcher Fehler", "last_error")
+
+
+# ---------------------------------------------------------------------------
+# Neuer Sensor: Erwarteter Verbrauch morgen
+# ---------------------------------------------------------------------------
+
+class FuelWatcherExpectedConsumptionTomorrowSensor(BaseDerivedSensor):
+    def __init__(self, main_sensor):
+        super().__init__(
+            main_sensor,
+            "Fuel Watcher Verbrauch Morgen",
+            "expected_consumption_tomorrow",
+            "km",
+        )

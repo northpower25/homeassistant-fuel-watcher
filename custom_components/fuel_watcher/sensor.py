@@ -1,3 +1,4 @@
+import logging
 from datetime import timedelta
 from homeassistant.components.sensor import SensorEntity
 from homeassistant.helpers.event import async_track_time_interval
@@ -13,28 +14,39 @@ from .statistics import (
 )
 from .const import *
 
+_LOGGER = logging.getLogger(__name__)
+
 SCAN_INTERVAL = timedelta(minutes=5)
 
+
 async def async_setup_entry(hass, entry, async_add_entities):
-    sensor = FuelWatcherSensor(hass, entry)
-    async_add_entities([sensor])
+    main_sensor = FuelWatcherSensor(hass, entry)
+    diag_sensor = FuelWatcherDiagnosticsSensor(hass, entry, main_sensor)
+
+    async_add_entities([main_sensor, diag_sensor])
 
     async def update(now):
-        await sensor.async_update()
+        await main_sensor.async_update()
+        diag_sensor.update_from_main()
 
     async_track_time_interval(hass, update, SCAN_INTERVAL)
+
+
+# ---------------------------------------------------------
+#   HAUPT-SENSOR
+# ---------------------------------------------------------
 
 class FuelWatcherSensor(SensorEntity):
     def __init__(self, hass, entry):
         self.hass = hass
         self._entry = entry
 
-        self._api = entry.data[CONF_TANKERKOENIG_API]
-        self._token = entry.data[CONF_TELEGRAM_TOKEN]
-        self._chat = entry.data[CONF_TELEGRAM_CHAT_ID]
-        self._plz = entry.data[CONF_PLZ]
-        self._radius = entry.data[CONF_RADIUS]
-        self._fuel = entry.data[CONF_FUEL]
+        self._api = entry.data.get(CONF_TANKERKOENIG_API)
+        self._token = entry.data.get(CONF_TELEGRAM_TOKEN)
+        self._chat = entry.data.get(CONF_TELEGRAM_CHAT_ID)
+        self._plz = entry.data.get(CONF_PLZ)
+        self._radius = entry.data.get(CONF_RADIUS)
+        self._fuel = entry.data.get(CONF_FUEL)
         self._source = entry.data.get(CONF_SOURCE, SOURCE_TANKERKOENIG)
 
         self._price_threshold = float(entry.data.get(CONF_PRICE_THRESHOLD, 0.0))
@@ -46,103 +58,131 @@ class FuelWatcherSensor(SensorEntity):
         self._attr_native_value = None
         self._attr_extra_state_attributes = {}
 
+        # Diagnose-Daten
+        self._diag = {
+            "last_update_ok": False,
+            "last_error": None,
+            "last_vehicle": None,
+            "last_price_data": None,
+            "last_distance": None,
+            "last_strategy": None,
+        }
+
     async def async_update(self):
-        data = get_cheapest(self._source, self._api, self._plz, self._radius, self._fuel)
-        if not data:
+        _LOGGER.debug("FuelWatcher: Update gestartet")
+
+        # --- Preisquelle ---
+        try:
+            data = get_cheapest(self._source, self._api, self._plz, self._radius, self._fuel)
+            self._diag["last_price_data"] = data
+        except Exception as e:
+            self._diag["last_error"] = f"Preisquelle Fehler: {e}"
+            _LOGGER.error(self._diag["last_error"])
             return
 
-        price = data["price"]
-        station = data["name"]
+        if not data:
+            self._diag["last_error"] = "Keine Daten von Preisquelle"
+            _LOGGER.error(self._diag["last_error"])
+            return
+
+        price = data.get("price")
+        station = data.get("name")
         station_lat = data.get("lat")
         station_lng = data.get("lng")
 
-        vehicle = get_vehicle_data(self.hass, self._entry)
-        fuel_level = vehicle["fuel_level"]
-        range_km = vehicle["range"]
-        consumption = vehicle["consumption"]
-        odometer = vehicle["odometer"]
-        location = vehicle["location"]
+        # --- Fahrzeugdaten ---
+        try:
+            vehicle = get_vehicle_data(self.hass, self._entry)
+            self._diag["last_vehicle"] = vehicle
+        except Exception as e:
+            self._diag["last_error"] = f"Fahrzeugdaten Fehler: {e}"
+            _LOGGER.error(self._diag["last_error"])
+            return
 
-        # Historie aktualisieren (aus Reichweite + Odometer)
-        update_history(range_km, odometer)
+        fuel_level = vehicle.get("fuel_level")
+        range_km = vehicle.get("range")
+        consumption = vehicle.get("consumption")
+        odometer = vehicle.get("odometer")
+        location_entity = vehicle.get("location")
 
+        # --- Historie ---
+        try:
+            update_history(range_km, odometer)
+        except Exception as e:
+            _LOGGER.error(f"FuelWatcher: Fehler in update_history: {e}")
+
+        # --- Standort robust ---
         distance_info = None
-        distance_ok = True
-
-        if location and station_lat is not None and station_lng is not None:
-            try:
-                lat_str, lon_str = [x.strip() for x in location.split(",")]
+        try:
+            # Fall 1: lat,lon-String
+            if isinstance(location_entity, str) and "," in location_entity:
+                lat_str, lon_str = location_entity.split(",")
                 vlat = float(lat_str)
                 vlon = float(lon_str)
-                dist = haversine_km(vlat, vlon, station_lat, station_lng)
-                distance_info = dist
-                if self._distance_threshold > 0 and dist > self._distance_threshold:
-                    distance_ok = False
-            except Exception as e:
-                print("Location parse error:", e)
+                distance_info = haversine_km(vlat, vlon, station_lat, station_lng)
 
-        price_ok = True
-        if self._price_threshold > 0 and price > self._price_threshold:
-            price_ok = False
+            # Fall 2: device_tracker / person / sensor mit Attributen
+            else:
+                loc_state = self.hass.states.get(self._entry.data.get(CONF_ENTITY_LOCATION))
+                if loc_state:
+                    lat = loc_state.attributes.get("latitude")
+                    lon = loc_state.attributes.get("longitude")
+                    if lat is not None and lon is not None:
+                        distance_info = haversine_km(float(lat), float(lon), station_lat, station_lng)
 
-        context = []
+        except Exception as e:
+            _LOGGER.error(f"FuelWatcher: Fehler in Standortberechnung: {e}")
 
-        if fuel_level is not None:
-            try:
-                if float(fuel_level) < 20:
-                    context.append("Tankinhalt niedrig")
-            except ValueError:
-                pass
+        self._diag["last_distance"] = distance_info
 
-        if range_km is not None:
-            try:
-                r = float(range_km)
-                if r < 100:
-                    context.append("Reichweite gering")
-            except ValueError:
-                pass
+        # --- Strategie ---
+        try:
+            now = dt_util.utcnow()
+            decision, reason = decide_tank_strategy(now, range_km)
+            self._diag["last_strategy"] = {"decision": decision, "reason": reason}
+        except Exception as e:
+            self._diag["last_error"] = f"Strategie Fehler: {e}"
+            _LOGGER.error(self._diag["last_error"])
+            decision, reason = None, None
 
-        if consumption is not None:
-            context.append(f"Verbrauch (Sensor): {consumption} L/100km")
-
-        if distance_info is not None:
-            context.append(f"Entfernung zur Tankstelle: {distance_info:.1f} km")
-
-        now = dt_util.utcnow()
-        decision, reason = decide_tank_strategy(now, range_km)
-
-        if decision:
-            context.append(f"Strategie: {decision}")
-            context.append(reason)
-
-        should_notify = False
-
-        if self._last_price is None or price < self._last_price:
-            should_notify = True
-
-        if not price_ok:
-            should_notify = False
-
-        if not distance_ok:
-            should_notify = False
-
-        if should_notify:
-            msg = f"⛽ Preis gefallen: {price:.3f} €/l ({self._fuel}) bei {station}"
-            if context:
-                msg += "\n" + " • ".join(context)
-            send_telegram(self._token, self._chat, msg)
-
-        self._last_price = price
+        # --- Sensorwerte setzen ---
         self._attr_native_value = price
-        attrs = {"station": station, "fuel": self._fuel, "source": self._source}
-        if distance_info is not None:
-            attrs["distance_km"] = round(distance_info, 2)
-        if fuel_level is not None:
-            attrs["fuel_level"] = fuel_level
-        if range_km is not None:
-            attrs["range_km"] = range_km
-        if consumption is not None:
-            attrs["consumption_l_100km"] = consumption
-        attrs["strategy_decision"] = decision
-        attrs["strategy_reason"] = reason
-        self._attr_extra_state_attributes = attrs
+        self._attr_extra_state_attributes = {
+            "station": station,
+            "fuel": self._fuel,
+            "source": self._source,
+            "fuel_level": fuel_level,
+            "range_km": range_km,
+            "consumption_l_100km": consumption,
+            "odometer": odometer,
+            "location": location_entity,
+            "distance_km": distance_info,
+            "strategy_decision": decision,
+            "strategy_reason": reason,
+        }
+
+        self._diag["last_update_ok"] = True
+        self._diag["last_error"] = None
+
+        _LOGGER.debug("FuelWatcher: Update abgeschlossen")
+
+
+# ---------------------------------------------------------
+#   DIAGNOSE-SENSOR
+# ---------------------------------------------------------
+
+class FuelWatcherDiagnosticsSensor(SensorEntity):
+    def __init__(self, hass, entry, main_sensor):
+        self.hass = hass
+        self._entry = entry
+        self._main = main_sensor
+
+        self._attr_name = "Fuel Watcher Diagnostics"
+        self._attr_native_value = None
+        self._attr_extra_state_attributes = {}
+
+    def update_from_main(self):
+        diag = self._main._diag
+
+        self._attr_native_value = "ok" if diag["last_update_ok"] else "error"
+        self._attr_extra_state_attributes = diag

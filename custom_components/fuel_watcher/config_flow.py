@@ -18,6 +18,7 @@ from .const import (
     CONF_ENTITY_CONSUMPTION,
     CONF_ENTITY_ODOMETER,
     CONF_ENTITY_LOCATION,
+    CONF_DYNAMIC_PLZ,
     SUPPORTED_SOURCES,
 )
 
@@ -33,6 +34,7 @@ class FuelWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Required(CONF_TELEGRAM_TOKEN): str,
             vol.Required(CONF_TELEGRAM_CHAT_ID): str,
 
+            vol.Required(CONF_DYNAMIC_PLZ, default=False): bool,
             vol.Required(CONF_PLZ): vol.All(str, vol.Length(min=5, max=5)),
             vol.Required(CONF_RADIUS, default=5): vol.Coerce(int),
 
@@ -72,11 +74,11 @@ class FuelWatcherOptionsFlow(config_entries.OptionsFlow):
         data = self.entry.data
         options = self.entry.options
 
-        # Fallback: Options überschreiben Data nicht, wenn leer
         def opt(key, default=""):
             return options.get(key, data.get(key, default))
 
         schema = vol.Schema({
+            vol.Required(CONF_DYNAMIC_PLZ, default=opt(CONF_DYNAMIC_PLZ, False)): bool,
             vol.Required(CONF_PLZ, default=opt(CONF_PLZ)): vol.All(str, vol.Length(min=5, max=5)),
             vol.Required(CONF_RADIUS, default=opt(CONF_RADIUS, 5)): vol.Coerce(int),
 

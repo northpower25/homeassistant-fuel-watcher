@@ -25,12 +25,19 @@ from .const import (
     CONF_CONSUMPTION_FRIDAY,
     CONF_CONSUMPTION_SATURDAY,
     CONF_CONSUMPTION_SUNDAY,
+    CONF_NOTIFY_ENABLED,
+    CONF_NOTIFY_ON_DECISION_TANKEN,
+    CONF_NOTIFY_ON_RANGE_DAYS,
+    CONF_NOTIFY_RANGE_DAYS_THRESHOLD,
+    CONF_NOTIFY_MSG_TANKEN,
+    CONF_NOTIFY_MSG_RANGE_DAYS,
+    DEFAULT_NOTIFY_MSG_TANKEN,
+    DEFAULT_NOTIFY_MSG_RANGE_DAYS,
 )
+from .notify import send_test_notification
 
 
 class FuelWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
-    """Handle the initial setup of Fuel Watcher."""
-
     async def async_step_user(self, user_input=None):
         if user_input is not None:
             return self.async_create_entry(title="Fuel Watcher", data=user_input)
@@ -53,7 +60,6 @@ class FuelWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             vol.Optional(CONF_ENTITY_ODOMETER, default=""): str,
             vol.Optional(CONF_ENTITY_LOCATION, default=""): str,
 
-            # Neue Wochentags-Verbrauchswerte
             vol.Optional(CONF_CONSUMPTION_MONDAY, default=50): vol.Coerce(int),
             vol.Optional(CONF_CONSUMPTION_TUESDAY, default=50): vol.Coerce(int),
             vol.Optional(CONF_CONSUMPTION_WEDNESDAY, default=50): vol.Coerce(int),
@@ -72,13 +78,14 @@ class FuelWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class FuelWatcherOptionsFlow(config_entries.OptionsFlow):
-    """Handle updates to the configuration."""
-
     def __init__(self, entry):
         self.entry = entry
 
     async def async_step_init(self, user_input=None):
         if user_input is not None:
+            if user_input.get("test_notification", False):
+                await send_test_notification(self.hass, self.entry)
+                user_input.pop("test_notification", None)
             return self.async_create_entry(title="", data=user_input)
 
         data = self.entry.data
@@ -99,7 +106,6 @@ class FuelWatcherOptionsFlow(config_entries.OptionsFlow):
             vol.Optional(CONF_ENTITY_ODOMETER, default=opt(CONF_ENTITY_ODOMETER, "")): str,
             vol.Optional(CONF_ENTITY_LOCATION, default=opt(CONF_ENTITY_LOCATION, "")): str,
 
-            # Neue Wochentags-Verbrauchswerte
             vol.Optional(CONF_CONSUMPTION_MONDAY, default=opt(CONF_CONSUMPTION_MONDAY, 50)): vol.Coerce(int),
             vol.Optional(CONF_CONSUMPTION_TUESDAY, default=opt(CONF_CONSUMPTION_TUESDAY, 50)): vol.Coerce(int),
             vol.Optional(CONF_CONSUMPTION_WEDNESDAY, default=opt(CONF_CONSUMPTION_WEDNESDAY, 50)): vol.Coerce(int),
@@ -107,6 +113,16 @@ class FuelWatcherOptionsFlow(config_entries.OptionsFlow):
             vol.Optional(CONF_CONSUMPTION_FRIDAY, default=opt(CONF_CONSUMPTION_FRIDAY, 60)): vol.Coerce(int),
             vol.Optional(CONF_CONSUMPTION_SATURDAY, default=opt(CONF_CONSUMPTION_SATURDAY, 20)): vol.Coerce(int),
             vol.Optional(CONF_CONSUMPTION_SUNDAY, default=opt(CONF_CONSUMPTION_SUNDAY, 10)): vol.Coerce(int),
+
+            vol.Optional(CONF_NOTIFY_ENABLED, default=opt(CONF_NOTIFY_ENABLED, True)): bool,
+            vol.Optional(CONF_NOTIFY_ON_DECISION_TANKEN, default=opt(CONF_NOTIFY_ON_DECISION_TANKEN, True)): bool,
+            vol.Optional(CONF_NOTIFY_ON_RANGE_DAYS, default=opt(CONF_NOTIFY_ON_RANGE_DAYS, True)): bool,
+            vol.Optional(CONF_NOTIFY_RANGE_DAYS_THRESHOLD, default=opt(CONF_NOTIFY_RANGE_DAYS_THRESHOLD, 2.0)): vol.Coerce(float),
+
+            vol.Optional(CONF_NOTIFY_MSG_TANKEN, default=opt(CONF_NOTIFY_MSG_TANKEN, DEFAULT_NOTIFY_MSG_TANKEN)): str,
+            vol.Optional(CONF_NOTIFY_MSG_RANGE_DAYS, default=opt(CONF_NOTIFY_MSG_RANGE_DAYS, DEFAULT_NOTIFY_MSG_RANGE_DAYS)): str,
+
+            vol.Optional("test_notification", default=False): bool,
         })
 
         return self.async_show_form(step_id="init", data_schema=schema)

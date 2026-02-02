@@ -164,3 +164,11 @@ def clear_tank_history(hass: HomeAssistant, entry: ConfigEntry) -> None:
 def get_tank_events(hass: HomeAssistant, entry: ConfigEntry) -> list[dict]:
     data = _load_data(hass, entry)
     return data.get("tank_events", [])
+
+def get_last_tank_event(hass: HomeAssistant, entry: ConfigEntry) -> dict | None:
+    """Return the most recent tank event or None if no events exist."""
+    events = get_tank_events(hass, entry)
+    if not events:
+        return None
+    return events[-1]
+

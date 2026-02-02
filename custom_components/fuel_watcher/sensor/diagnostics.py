@@ -36,6 +36,16 @@ class FuelWatcherDiagnosticsSensor(SensorEntity):
         }
 
     async def async_update(self) -> None:
-        # Platzhalter: hier kannst du letzte API-Response, Fehler, Telegram-Status etc. eintragen
-        self._attrs["last_error"] = None
-        self._attrs["last_update"] = self.entry.last_update_success
+        data = self.hass.data.get(DOMAIN, {}).get(self.entry.entry_id, {})
+
+        last_api = data.get("last_api")
+        last_telegram = data.get("last_telegram")
+        last_error = data.get("last_error")
+
+        self._attrs = {
+            "last_api": last_api,
+            "last_telegram": last_telegram,
+            "last_error": last_error,
+        }
+
+        self._state = "error" if last_error else "ok"

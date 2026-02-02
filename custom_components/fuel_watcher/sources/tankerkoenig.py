@@ -34,7 +34,6 @@ async def get_price_data(hass: HomeAssistant, entry: ConfigEntry):
     fuel = entry.data.get(CONF_FUEL, "e5")
     radius = entry.data.get(CONF_RADIUS, 5)
 
-    # Standort des Fahrzeugs
     location_entity = entry.data.get(CONF_ENTITY_LOCATION)
     location = hass.states.get(location_entity)
 
@@ -65,7 +64,6 @@ async def get_price_data(hass: HomeAssistant, entry: ConfigEntry):
     if not stations:
         return None
 
-    # Günstigste Tankstelle auswählen
     station = min(stations, key=lambda s: s.get("price", 999))
 
     distance = _distance_km(lat, lng, station["lat"], station["lng"])
@@ -77,4 +75,9 @@ async def get_price_data(hass: HomeAssistant, entry: ConfigEntry):
         "lng": station.get("lng"),
         "distance_km": round(distance, 2),
         "fuel": fuel,
+        "street": station.get("street"),
+        "houseNumber": station.get("houseNumber"),
+        "postCode": station.get("postCode"),
+        "place": station.get("place"),
+        "id": station.get("id"),
     }

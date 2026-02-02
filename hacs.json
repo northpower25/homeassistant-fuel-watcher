@@ -1,0 +1,10 @@
+{
+  "name": "Fuel Watcher",
+  "content_in_root": false,
+  "domains": ["sensor"],
+  "country": "DE",
+  "homeassistant": "2026.1.0",
+  "render_readme": true,
+  "iot_class": "Cloud Polling",
+  "filename": "custom_components/fuel_watcher/manifest.json"
+}

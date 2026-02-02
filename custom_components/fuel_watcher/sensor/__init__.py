@@ -1,58 +1,34 @@
+from __future__ import annotations
+
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .main import FuelWatcherSensor
+from .main import FuelWatcherMainSensor
 from .diagnostics import FuelWatcherDiagnosticsSensor
 from .location import FuelWatcherLocationSensor
-from .derived import (
-    FuelWatcherPriceSensor,
-    FuelWatcherStationNameSensor,
-    FuelWatcherDistanceSensor,
-    FuelWatcherRangeSensor,
-    FuelWatcherFuelLevelSensor,
-    FuelWatcherConsumptionSensor,
-    FuelWatcherOdometerSensor,
-    FuelWatcherStrategyDecisionSensor,
-    FuelWatcherStrategyReasonSensor,
-    FuelWatcherHealthScoreSensor,
-    FuelWatcherLastErrorSensor,
-    FuelWatcherExpectedConsumptionTomorrowSensor,
-    FuelWatcherDaysLeftSensor,
-    FuelWatcherPriceDeltaSensor,
-    FuelWatcherPriceDeltaPercentSensor,
-)
 from .tank_history import FuelWatcherTankHistorySensor
+
+from ..const import DOMAIN
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddEntitiesCallback
 ):
-    main_sensor = FuelWatcherSensor(hass, entry)
-    diag_sensor = FuelWatcherDiagnosticsSensor(hass, entry, main_sensor)
+    """Set up Fuel Watcher sensors."""
+
+    main_sensor = FuelWatcherMainSensor(hass, entry)
+    diag_sensor = FuelWatcherDiagnosticsSensor(hass, entry)
     location_sensor = FuelWatcherLocationSensor(hass, entry)
+    tank_history_sensor = FuelWatcherTankHistorySensor(hass, entry)
 
-    derived_sensors = [
-        FuelWatcherPriceSensor(main_sensor),
-        FuelWatcherStationNameSensor(main_sensor),
-        FuelWatcherDistanceSensor(main_sensor),
-        FuelWatcherRangeSensor(main_sensor),
-        FuelWatcherFuelLevelSensor(main_sensor),
-        FuelWatcherConsumptionSensor(main_sensor),
-        FuelWatcherOdometerSensor(main_sensor),
-        FuelWatcherStrategyDecisionSensor(main_sensor),
-        FuelWatcherStrategyReasonSensor(main_sensor),
-        FuelWatcherHealthScoreSensor(main_sensor),
-        FuelWatcherLastErrorSensor(main_sensor),
-        FuelWatcherExpectedConsumptionTomorrowSensor(main_sensor),
-        FuelWatcherDaysLeftSensor(main_sensor),
-        FuelWatcherPriceDeltaSensor(main_sensor),
-        FuelWatcherPriceDeltaPercentSensor(main_sensor),
+    entities = [
+        main_sensor,
+        diag_sensor,
+        location_sensor,
+        tank_history_sensor,
     ]
-     tank_history_sensor = FuelWatcherTankHistorySensor(hass, entry)
 
-    async_add_entities([main_sensor, diag_sensor, location_sensor, tank_history_sensor] + derived_sensors)
-
-    async_add_entities([main_sensor, diag_sensor, location_sensor] + derived_sensors)
+    async_add_entities(entities)

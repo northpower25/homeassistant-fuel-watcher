@@ -76,6 +76,8 @@ CONF_TANK_EVENT_PRICE = "tank_event_price"
 CONF_TANK_EVENT_LITERS = "tank_event_liters"
 CONF_TANK_EVENT_TOTAL = "tank_event_total"
 CONF_TANK_EVENT_ODOMETER = "tank_event_odometer"
+CONF_TANK_HISTORY_RETENTION_MONTHS = "tank_history_retention_months"
+DEFAULT_TANK_HISTORY_RETENTION_MONTHS = 24
 
 # Default messages (humorvoll, Markdown + Emojis)
 DEFAULT_NOTIFY_MSG_TANKEN = (

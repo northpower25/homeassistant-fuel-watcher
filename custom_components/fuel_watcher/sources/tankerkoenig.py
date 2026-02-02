@@ -5,9 +5,15 @@ from math import radians, sin, cos, sqrt, atan2
 
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .base import fetch_json
-from ..const import CONF_TANKERKOENIG_API, CONF_FUEL, CONF_RADIUS, CONF_ENTITY_LOCATION
+from ..const import (
+    CONF_TANKERKOENIG_API,
+    CONF_FUEL,
+    CONF_RADIUS,
+    CONF_ENTITY_LOCATION,
+)
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -48,8 +54,8 @@ async def get_price_data(hass: HomeAssistant, entry: ConfigEntry):
         f"lat={lat}&lng={lng}&rad={radius}&sort=price&type={fuel}&apikey={api_key}"
     )
 
-    async with hass.helpers.aiohttp_client.async_get_clientsession() as session:
-        data = await fetch_json(session, url)
+    session = async_get_clientsession(hass)
+    data = await fetch_json(session, url)
 
     if not data or "stations" not in data:
         _LOGGER.error("Invalid response from Tankerkoenig API")

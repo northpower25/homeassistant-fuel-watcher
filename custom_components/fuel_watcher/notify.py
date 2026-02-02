@@ -21,7 +21,7 @@ async def _send_telegram_message(token: str, chat_id: str, text: str, parse_mode
         "chat_id": chat_id,
         "text": text,
         "parse_mode": parse_mode,
-        "disable_web_page_preview": True,
+        "disable_web_page_preview": False,
     }
 
     async with aiohttp.ClientSession() as session:

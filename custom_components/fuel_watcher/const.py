@@ -1,5 +1,12 @@
+from __future__ import annotations
+
 DOMAIN = "fuel_watcher"
 
+# Sources
+SOURCE_TANKERKOENIG = "tankerkoenig"
+SUPPORTED_SOURCES = [SOURCE_TANKERKOENIG]
+
+# Config keys
 CONF_TANKERKOENIG_API = "tankerkoenig_api"
 CONF_TELEGRAM_TOKEN = "telegram_token"
 CONF_TELEGRAM_CHAT_ID = "telegram_chat_id"
@@ -17,12 +24,7 @@ CONF_ENTITY_CONSUMPTION = "entity_consumption"
 CONF_ENTITY_ODOMETER = "entity_odometer"
 CONF_ENTITY_LOCATION = "entity_location"
 
-SOURCE_TANKERKOENIG = "tankerkoenig"
-
-SUPPORTED_SOURCES = [
-    SOURCE_TANKERKOENIG,
-]
-
+# Weekday consumption
 CONF_CONSUMPTION_MONDAY = "consumption_monday_km"
 CONF_CONSUMPTION_TUESDAY = "consumption_tuesday_km"
 CONF_CONSUMPTION_WEDNESDAY = "consumption_wednesday_km"
@@ -40,4 +42,63 @@ WEEKDAY_OPTIONS = [
     CONF_CONSUMPTION_SATURDAY,
     CONF_CONSUMPTION_SUNDAY,
 ]
-HISTORY_FILE = "fuel_history.json"
+
+# Notify options
+CONF_NOTIFY_ENABLED = "notify_enabled"
+CONF_NOTIFY_ON_DECISION_TANKEN = "notify_on_decision_tanken"
+CONF_NOTIFY_ON_PRICE_THRESHOLD = "notify_on_price_threshold"
+CONF_NOTIFY_ON_RANGE_KM = "notify_on_range_km"
+CONF_NOTIFY_ON_RANGE_DAYS = "notify_on_range_days"
+CONF_NOTIFY_ON_PRICE_SPIKE = "notify_on_price_spike"
+CONF_NOTIFY_ON_STATION_CHANGE = "notify_on_station_change"
+CONF_NOTIFY_ON_API_ERROR = "notify_on_api_error"
+
+CONF_NOTIFY_RANGE_KM_THRESHOLD = "notify_range_km_threshold"
+CONF_NOTIFY_RANGE_DAYS_THRESHOLD = "notify_range_days_threshold"
+CONF_NOTIFY_PRICE_SPIKE_PERCENT = "notify_price_spike_percent"
+
+CONF_NOTIFY_MSG_TANKEN = "notify_msg_tanken"
+CONF_NOTIFY_MSG_PRICE = "notify_msg_price"
+CONF_NOTIFY_MSG_RANGE_KM = "notify_msg_range_km"
+CONF_NOTIFY_MSG_RANGE_DAYS = "notify_msg_range_days"
+CONF_NOTIFY_MSG_PRICE_SPIKE = "notify_msg_price_spike"
+CONF_NOTIFY_MSG_STATION_CHANGE = "notify_msg_station_change"
+CONF_NOTIFY_MSG_API_ERROR = "notify_msg_api_error"
+
+# Default messages (humorvoll, Markdown + Emojis)
+DEFAULT_NOTIFY_MSG_TANKEN = (
+    "⛽ *Dein Auto flüstert: „Bitte tank mich…“*\n"
+    "Grund: _{reason}_\n"
+    "Preis: `{price} €/l`\n"
+    "Reichweite: `{range_km} km`"
+)
+
+DEFAULT_NOTIFY_MSG_PRICE = (
+    "💰 *Schnäppchen‑Alarm!*\n"
+    "Der Preis ist jetzt bei `{price} €/l` — gönn dir!"
+)
+
+DEFAULT_NOTIFY_MSG_RANGE_KM = (
+    "⚠️ *Oh oh…*\n"
+    "Dein Auto hat Durst: nur noch `{range_km} km` Restreichweite."
+)
+
+DEFAULT_NOTIFY_MSG_RANGE_DAYS = (
+    "📅 *Wie lange hält der Saft?*\n"
+    "Noch `{days_left}` Tage — dann wird’s eng."
+)
+
+DEFAULT_NOTIFY_MSG_PRICE_SPIKE = (
+    "📈 *Autsch! Preisexplosion…*\n"
+    "Der Preis ist um `{spike_percent}%` gestiegen (jetzt `{price} €/l`)."
+)
+
+DEFAULT_NOTIFY_MSG_STATION_CHANGE = (
+    "⛽ *Neue Tankstelle im Spiel!*\n"
+    "Jetzt: _{station}_ (`{price} €/l`, Entfernung `{distance_km} km`)."
+)
+
+DEFAULT_NOTIFY_MSG_API_ERROR = (
+    "❌ *Fuel Watcher hat ein Problem…*\n"
+    "Die Tankdaten konnten nicht aktualisiert werden: _{error}_"
+)

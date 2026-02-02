@@ -33,8 +33,18 @@ from .const import (
     CONF_NOTIFY_MSG_RANGE_DAYS,
     DEFAULT_NOTIFY_MSG_TANKEN,
     DEFAULT_NOTIFY_MSG_RANGE_DAYS,
+    CONF_PRICE_MODE,
+    CONF_PRICE_DELTA_PERCENT,
+    CONF_PRICE_DELTA_ABSOLUTE,
+    CONF_NOTIFY_ON_PRICE_DELTA,
+    CONF_NOTIFY_MSG_PRICE_DELTA,
+    DEFAULT_NOTIFY_MSG_PRICE_DELTA,
+    CONF_NOTIFY_ON_PRICE_THRESHOLD,
+    CONF_NOTIFY_ON_RANGE_KM,
+    CONF_NOTIFY_RANGE_KM_THRESHOLD,
 )
 from .notify import send_test_notification
+from .tank_history import append_tank_event
 
 
 class FuelWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -86,6 +96,35 @@ class FuelWatcherOptionsFlow(config_entries.OptionsFlow):
             if user_input.get("test_notification", False):
                 await send_test_notification(self.hass, self.entry)
                 user_input.pop("test_notification", None)
+
+            # Tankvorgang erfassen (optional)
+            price = user_input.pop("tank_event_price", None)
+            liters = user_input.pop("tank_event_liters", None)
+            total = user_input.pop("tank_event_total", None)
+            odometer = user_input.pop("tank_event_odometer", None)
+
+            if price:
+                try:
+                    price_f = float(price)
+                    liters_f = float(liters) if liters else None
+                    total_f = float(total) if total else None
+                    odometer_f = float(odometer) if odometer else None
+                except ValueError:
+                    price_f = None
+                    liters_f = None
+                    total_f = None
+                    odometer_f = None
+
+                if price_f is not None:
+                    append_tank_event(
+                        self.hass,
+                        self.entry,
+                        price_per_liter=price_f,
+                        liters=liters_f,
+                        total_cost=total_f,
+                        odometer=odometer_f,
+                    )
+
             return self.async_create_entry(title="", data=user_input)
 
         data = self.entry.data
@@ -116,13 +155,28 @@ class FuelWatcherOptionsFlow(config_entries.OptionsFlow):
 
             vol.Optional(CONF_NOTIFY_ENABLED, default=opt(CONF_NOTIFY_ENABLED, True)): bool,
             vol.Optional(CONF_NOTIFY_ON_DECISION_TANKEN, default=opt(CONF_NOTIFY_ON_DECISION_TANKEN, True)): bool,
+            vol.Optional(CONF_NOTIFY_ON_PRICE_THRESHOLD, default=opt(CONF_NOTIFY_ON_PRICE_THRESHOLD, False)): bool,
+            vol.Optional(CONF_NOTIFY_ON_PRICE_DELTA, default=opt(CONF_NOTIFY_ON_PRICE_DELTA, False)): bool,
+            vol.Optional(CONF_NOTIFY_ON_RANGE_KM, default=opt(CONF_NOTIFY_ON_RANGE_KM, False)): bool,
             vol.Optional(CONF_NOTIFY_ON_RANGE_DAYS, default=opt(CONF_NOTIFY_ON_RANGE_DAYS, True)): bool,
+
+            vol.Optional(CONF_NOTIFY_RANGE_KM_THRESHOLD, default=opt(CONF_NOTIFY_RANGE_KM_THRESHOLD, 100.0)): vol.Coerce(float),
             vol.Optional(CONF_NOTIFY_RANGE_DAYS_THRESHOLD, default=opt(CONF_NOTIFY_RANGE_DAYS_THRESHOLD, 2.0)): vol.Coerce(float),
+
+            vol.Optional(CONF_PRICE_MODE, default=opt(CONF_PRICE_MODE, "fixed")): vol.In(["fixed", "percent", "absolute"]),
+            vol.Optional(CONF_PRICE_DELTA_PERCENT, default=opt(CONF_PRICE_DELTA_PERCENT, 5.0)): vol.Coerce(float),
+            vol.Optional(CONF_PRICE_DELTA_ABSOLUTE, default=opt(CONF_PRICE_DELTA_ABSOLUTE, 0.10)): vol.Coerce(float),
 
             vol.Optional(CONF_NOTIFY_MSG_TANKEN, default=opt(CONF_NOTIFY_MSG_TANKEN, DEFAULT_NOTIFY_MSG_TANKEN)): str,
             vol.Optional(CONF_NOTIFY_MSG_RANGE_DAYS, default=opt(CONF_NOTIFY_MSG_RANGE_DAYS, DEFAULT_NOTIFY_MSG_RANGE_DAYS)): str,
+            vol.Optional(CONF_NOTIFY_MSG_PRICE_DELTA, default=opt(CONF_NOTIFY_MSG_PRICE_DELTA, DEFAULT_NOTIFY_MSG_PRICE_DELTA)): str,
 
             vol.Optional("test_notification", default=False): bool,
+
+            vol.Optional("tank_event_price", default=""): str,
+            vol.Optional("tank_event_liters", default=""): str,
+            vol.Optional("tank_event_total", default=""): str,
+            vol.Optional("tank_event_odometer", default=""): str,
         })
 
         return self.async_show_form(step_id="init", data_schema=schema)

@@ -13,40 +13,17 @@ from .strategy import (
     FuelWatcherPriceSpikeSensor,
 )
 from .diagnostics import FuelWatcherDiagnosticsSensor
-from .location import (
-    FuelWatcherLocationSensor,
-    FuelWatcherDistanceSensor,
-)
+from .location import FuelWatcherLocationSensor, FuelWatcherDistanceSensor
 from .tank_history_sensor import FuelWatcherTankHistorySensor
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
-    """Set up all Fuel Watcher sensors."""
-
     entities = [
-        # A: Hauptsensor
         FuelWatcherMainSensor(hass, entry),
-
-        # B + F: Strategie / abgeleitete Sensoren
         FuelWatcherDecisionSensor(hass, entry),
         FuelWatcherRangeKmSensor(hass, entry),
-        FuelWatcherDaysLeftSensor(hass, entry),
-        FuelWatcherPriceDeltaSensor(hass, entry),
-        FuelWatcherPriceSpikeSensor(hass, entry),
-
-        # C: Diagnostics
-        FuelWatcherDiagnosticsSensor(hass, entry),
-        
-        # E: Tank History
-        FuelWatcherTankHistorySensor(hass, entry),
-        # D: Location
-        FuelWatcherLocationSensor(hass, entry),
-        FuelWatcherDistanceSensor(hass, entry),
-        
-
-    ]
-
-    async_add_entities(entities)
+        FuelWatcherDaysLeft

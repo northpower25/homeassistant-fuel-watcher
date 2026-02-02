@@ -1,0 +1,67 @@
+add_tank_event:
+  name: Tankvorgang hinzufügen
+  description: Fügt einen neuen Tankvorgang zur Fuel Watcher Historie hinzu.
+  fields:
+    config_entry_id:
+      description: ID des Fuel Watcher Config‑Eintrags
+      example: "8f3b2c1d9a"
+    price_per_liter:
+      description: Preis pro Liter
+      example: 1.72
+    liters:
+      description: Getankte Liter
+      example: 42.5
+    total_cost:
+      description: Gesamtkosten (optional, wird sonst berechnet)
+      example: 73.10
+    station_name:
+      description: Name der Tankstelle (optional)
+      example: "Aral Musterstraße"
+    odometer:
+      description: Kilometerstand (optional)
+      example: 12840
+    suggested_price:
+      description: Empfohlener Preis zum Zeitpunkt des Tankens (optional)
+      example: 1.79
+    source:
+      description: Quelle (manual/telegram/auto)
+      example: "manual"
+
+update_tank_event:
+  name: Tankvorgang aktualisieren
+  description: Aktualisiert einen bestehenden Tankvorgang.
+  fields:
+    config_entry_id:
+      description: ID des Fuel Watcher Config‑Eintrags
+    event_id:
+      description: ID des Tankvorgangs
+    price_per_liter:
+      description: Neuer Preis pro Liter (optional)
+    liters:
+      description: Neue Liter (optional)
+    total_cost:
+      description: Neue Gesamtkosten (optional)
+    station_name:
+      description: Neue Tankstelle (optional)
+    odometer:
+      description: Neuer Kilometerstand (optional)
+    suggested_price:
+      description: Neuer empfohlener Preis (optional)
+    source:
+      description: Neue Quelle (optional)
+
+delete_tank_event:
+  name: Tankvorgang löschen
+  description: Löscht einen Tankvorgang.
+  fields:
+    config_entry_id:
+      description: ID des Fuel Watcher Config‑Eintrags
+    event_id:
+      description: ID des Tankvorgangs
+
+clear_tank_history:
+  name: Tankhistorie löschen
+  description: Löscht alle Tankvorgänge.
+  fields:
+    config_entry_id:
+      description: ID des Fuel Watcher Config‑Eintrags

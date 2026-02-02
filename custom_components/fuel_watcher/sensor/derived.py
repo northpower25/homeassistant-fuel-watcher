@@ -15,18 +15,12 @@ class BaseDerivedSensor(SensorEntity):
 
     @property
     def device_info(self):
-        """Group all derived sensors under the same device as the main sensor."""
         return self._main.device_info
 
     @property
     def native_value(self):
-        """Return the derived attribute value from the main sensor."""
         return self._main.extra_state_attributes.get(self._attribute)
 
-
-# ---------------------------------------------------------------------------
-# Preis & Tankstelle
-# ---------------------------------------------------------------------------
 
 class FuelWatcherPriceSensor(BaseDerivedSensor):
     def __init__(self, main_sensor):
@@ -42,10 +36,6 @@ class FuelWatcherDistanceSensor(BaseDerivedSensor):
     def __init__(self, main_sensor):
         super().__init__(main_sensor, "Fuel Watcher Entfernung", "distance_km", "km")
 
-
-# ---------------------------------------------------------------------------
-# Fahrzeugdaten
-# ---------------------------------------------------------------------------
 
 class FuelWatcherRangeSensor(BaseDerivedSensor):
     def __init__(self, main_sensor):
@@ -72,10 +62,6 @@ class FuelWatcherOdometerSensor(BaseDerivedSensor):
         super().__init__(main_sensor, "Fuel Watcher Kilometerstand", "odometer", "km")
 
 
-# ---------------------------------------------------------------------------
-# Strategie
-# ---------------------------------------------------------------------------
-
 class FuelWatcherStrategyDecisionSensor(BaseDerivedSensor):
     def __init__(self, main_sensor):
         super().__init__(main_sensor, "Fuel Watcher Entscheidung", "strategy_decision")
@@ -85,10 +71,6 @@ class FuelWatcherStrategyReasonSensor(BaseDerivedSensor):
     def __init__(self, main_sensor):
         super().__init__(main_sensor, "Fuel Watcher Begründung", "strategy_reason")
 
-
-# ---------------------------------------------------------------------------
-# Diagnose
-# ---------------------------------------------------------------------------
 
 class FuelWatcherHealthScoreSensor(BaseDerivedSensor):
     def __init__(self, main_sensor):
@@ -100,10 +82,6 @@ class FuelWatcherLastErrorSensor(BaseDerivedSensor):
         super().__init__(main_sensor, "Fuel Watcher Fehler", "last_error")
 
 
-# ---------------------------------------------------------------------------
-# Neuer Sensor: Erwarteter Verbrauch morgen
-# ---------------------------------------------------------------------------
-
 class FuelWatcherExpectedConsumptionTomorrowSensor(BaseDerivedSensor):
     def __init__(self, main_sensor):
         super().__init__(
@@ -111,4 +89,14 @@ class FuelWatcherExpectedConsumptionTomorrowSensor(BaseDerivedSensor):
             "Fuel Watcher Verbrauch Morgen",
             "expected_consumption_tomorrow",
             "km",
+        )
+
+
+class FuelWatcherDaysLeftSensor(BaseDerivedSensor):
+    def __init__(self, main_sensor):
+        super().__init__(
+            main_sensor,
+            "Fuel Watcher Tage Reichweite",
+            "days_left",
+            "d",
         )

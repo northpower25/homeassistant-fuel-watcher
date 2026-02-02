@@ -22,8 +22,28 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
+    """Set up all Fuel Watcher sensors."""
+
     entities = [
+        # Hauptsensor
         FuelWatcherMainSensor(hass, entry),
+
+        # Strategie-Sensoren
         FuelWatcherDecisionSensor(hass, entry),
         FuelWatcherRangeKmSensor(hass, entry),
-        FuelWatcherDaysLeft
+        FuelWatcherDaysLeftSensor(hass, entry),
+        FuelWatcherPriceDeltaSensor(hass, entry),
+        FuelWatcherPriceSpikeSensor(hass, entry),
+
+        # Diagnose
+        FuelWatcherDiagnosticsSensor(hass, entry),
+
+        # Location
+        FuelWatcherLocationSensor(hass, entry),
+        FuelWatcherDistanceSensor(hass, entry),
+
+        # Tankhistorie
+        FuelWatcherTankHistorySensor(hass, entry),
+    ]
+
+    async_add_entities(entities)

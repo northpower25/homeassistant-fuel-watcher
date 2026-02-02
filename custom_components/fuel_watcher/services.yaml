@@ -1,10 +1,17 @@
-add_tank_event:
-  name: Tankvorgang hinzufügen
-  description: Fügt einen neuen Tankvorgang zur Fuel Watcher Historie hinzu.
+send_test_notification:
+  name: Testnachricht senden
+  description: Sendet eine Testnachricht über die konfigurierte Benachrichtigungsmethode.
   fields:
     config_entry_id:
-      description: ID des Fuel Watcher Config‑Eintrags
+      description: Optionale Config-Entry-ID, falls mehrere Instanzen existieren.
       example: "8f3b2c1d9a"
+
+add_tank_event:
+  name: Tankvorgang hinzufügen
+  description: Fügt einen neuen Tankvorgang zur Fuel-Watcher-Historie hinzu.
+  fields:
+    config_entry_id:
+      description: Optionale Config-Entry-ID, falls mehrere Instanzen existieren.
     price_per_liter:
       description: Preis pro Liter
       example: 1.72
@@ -17,12 +24,12 @@ add_tank_event:
     station_name:
       description: Name der Tankstelle (optional)
       example: "Aral Musterstraße"
-    odometer:
-      description: Kilometerstand (optional)
-      example: 12840
     suggested_price:
       description: Empfohlener Preis zum Zeitpunkt des Tankens (optional)
       example: 1.79
+    odometer:
+      description: Kilometerstand (optional)
+      example: 12840
     source:
       description: Quelle (manual/telegram/auto)
       example: "manual"
@@ -32,7 +39,7 @@ update_tank_event:
   description: Aktualisiert einen bestehenden Tankvorgang.
   fields:
     config_entry_id:
-      description: ID des Fuel Watcher Config‑Eintrags
+      description: Optionale Config-Entry-ID, falls mehrere Instanzen existieren.
     event_id:
       description: ID des Tankvorgangs
     price_per_liter:
@@ -43,10 +50,10 @@ update_tank_event:
       description: Neue Gesamtkosten (optional)
     station_name:
       description: Neue Tankstelle (optional)
-    odometer:
-      description: Neuer Kilometerstand (optional)
     suggested_price:
       description: Neuer empfohlener Preis (optional)
+    odometer:
+      description: Neuer Kilometerstand (optional)
     source:
       description: Neue Quelle (optional)
 
@@ -55,7 +62,7 @@ delete_tank_event:
   description: Löscht einen Tankvorgang.
   fields:
     config_entry_id:
-      description: ID des Fuel Watcher Config‑Eintrags
+      description: Optionale Config-Entry-ID, falls mehrere Instanzen existieren.
     event_id:
       description: ID des Tankvorgangs
 
@@ -64,4 +71,4 @@ clear_tank_history:
   description: Löscht alle Tankvorgänge.
   fields:
     config_entry_id:
-      description: ID des Fuel Watcher Config‑Eintrags
+      description: Optionale Config-Entry-ID, falls mehrere Instanzen existieren.

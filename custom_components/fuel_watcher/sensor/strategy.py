@@ -38,44 +38,44 @@ class _BaseStrategySensor(SensorEntity):
 
 
 class FuelWatcherRangeKmSensor(_BaseStrategySensor):
-    """Reichweite in km (aus range_entity)."""
+    """Reichweite in km."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         super().__init__(hass, entry, "Reichweite (km)", "range_km")
 
     async def async_update(self) -> None:
-        range_entity_id = self.entry.options.get("range_entity")
-        if not range_entity_id:
+        entity = self.entry.options.get("range_entity")
+        if not entity:
             self._state = None
             return
 
-        st = self.hass.states.get(range_entity_id)
+        st = self.hass.states.get(entity)
         if not st:
             self._state = None
             return
 
         try:
             self._state = float(st.state)
-        except (TypeError, ValueError):
+        except:
             self._state = None
 
 
 class FuelWatcherDaysLeftSensor(_BaseStrategySensor):
-    """Reichweite in Tagen (aus Reichweite + Verbrauch)."""
+    """Reichweite in Tagen."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         super().__init__(hass, entry, "Reichweite (Tage)", "days_left")
 
     async def async_update(self) -> None:
-        range_entity_id = self.entry.options.get("range_entity")
-        consumption_entity_id = self.entry.options.get("consumption_entity")
+        range_entity = self.entry.options.get("range_entity")
+        consumption_entity = self.entry.options.get("consumption_entity")
 
-        if not range_entity_id or not consumption_entity_id:
+        if not range_entity or not consumption_entity:
             self._state = None
             return
 
-        st_range = self.hass.states.get(range_entity_id)
-        st_cons = self.hass.states.get(consumption_entity_id)
+        st_range = self.hass.states.get(range_entity)
+        st_cons = self.hass.states.get(consumption_entity)
 
         if not st_range or not st_cons:
             self._state = None
@@ -83,18 +83,12 @@ class FuelWatcherDaysLeftSensor(_BaseStrategySensor):
 
         try:
             km_left = float(st_range.state)
-            cons_l_per_100km = float(st_cons.state)
-        except (TypeError, ValueError):
+            cons = float(st_cons.state)  # L/100km
+        except:
             self._state = None
             return
 
-        # sehr einfache Heuristik: Tageskilometer aus Verbrauch ableiten ist schwierig,
-        # daher nutzen wir optional avg_daily_km, sonst 40 km/Tag.
         avg_daily_km = float(self.entry.options.get("avg_daily_km", 40))
-        if avg_daily_km <= 0:
-            self._state = None
-            return
-
         self._state = round(km_left / avg_daily_km, 1)
         self._attrs["km_left"] = km_left
         self._attrs["avg_daily_km"] = avg_daily_km
@@ -107,19 +101,24 @@ class FuelWatcherPriceDeltaSensor(_BaseStrategySensor):
         super().__init__(hass, entry, "Preis-Delta", "price_delta")
 
     async def async_update(self) -> None:
-        main_price_entity = self.entry.options.get("main_price_entity")
-        current_price = None
+        price_entity = self.entry.options.get("main_price_entity")
+        if not price_entity:
+            self._state = None
+            return
 
-        if main_price_entity:
-            st = self.hass.states.get(main_price_entity)
-            if st:
-                try:
-                    current_price = float(st.state)
-                except (TypeError, ValueError):
-                    current_price = None
+        st = self.hass.states.get(price_entity)
+        if not st:
+            self._state = None
+            return
+
+        try:
+            current_price = float(st.state)
+        except:
+            self._state = None
+            return
 
         last = get_last_tank_event(self.hass, self.entry)
-        if not last or current_price is None:
+        if not last:
             self._state = None
             return
 
@@ -135,26 +134,32 @@ class FuelWatcherPriceDeltaSensor(_BaseStrategySensor):
 
 
 class FuelWatcherPriceSpikeSensor(_BaseStrategySensor):
-    """Preis-Spike (z.B. > X €/L über letztem Preis)."""
+    """Preis-Spike."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         super().__init__(hass, entry, "Preis-Spike", "price_spike")
 
     async def async_update(self) -> None:
         threshold = float(self.entry.options.get("price_spike_threshold", 0.08))
-        main_price_entity = self.entry.options.get("main_price_entity")
-        current_price = None
+        price_entity = self.entry.options.get("main_price_entity")
 
-        if main_price_entity:
-            st = self.hass.states.get(main_price_entity)
-            if st:
-                try:
-                    current_price = float(st.state)
-                except (TypeError, ValueError):
-                    current_price = None
+        if not price_entity:
+            self._state = None
+            return
+
+        st = self.hass.states.get(price_entity)
+        if not st:
+            self._state = None
+            return
+
+        try:
+            current_price = float(st.state)
+        except:
+            self._state = None
+            return
 
         last = get_last_tank_event(self.hass, self.entry)
-        if not last or current_price is None:
+        if not last:
             self._state = None
             return
 
@@ -170,60 +175,51 @@ class FuelWatcherPriceSpikeSensor(_BaseStrategySensor):
 
 
 class FuelWatcherDecisionSensor(_BaseStrategySensor):
-    """Entscheidung: Tanken / Warten + Begründung."""
+    """Entscheidung: Tanken / Warten."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         super().__init__(hass, entry, "Entscheidung", "decision")
 
     async def async_update(self) -> None:
-        # Tage bis leer
-        days_sensor_id = self.entry.options.get("days_left_entity")
-        days_left = None
-        if days_sensor_id:
-            st_days = self.hass.states.get(days_sensor_id)
-            if st_days:
-                try:
-                    days_left = float(st_days.state)
-                except (TypeError, ValueError):
-                    days_left = None
+        days_entity = self.entry.options.get("days_left_entity")
+        delta_entity = self.entry.options.get("price_delta_entity")
 
-        # Preis-Delta
-        price_delta_entity = self.entry.options.get("price_delta_entity")
+        days_left = None
         price_delta = None
-        if price_delta_entity:
-            st_delta = self.hass.states.get(price_delta_entity)
-            if st_delta:
+
+        if days_entity:
+            st = self.hass.states.get(days_entity)
+            if st:
                 try:
-                    price_delta = float(st_delta.state)
-                except (TypeError, ValueError):
-                    price_delta = None
+                    days_left = float(st.state)
+                except:
+                    pass
+
+        if delta_entity:
+            st = self.hass.states.get(delta_entity)
+            if st:
+                try:
+                    price_delta = float(st.state)
+                except:
+                    pass
 
         min_days_left = float(self.entry.options.get("min_days_left", 2))
         delta_threshold = float(self.entry.options.get("decision_delta_threshold", -0.03))
 
-        reason_parts: list[str] = []
-
-        # einfache Heuristik:
-        # 1) Wenn Tage < min_days_left → Tanken
-        # 2) Wenn Preis-Delta deutlich negativ → Tanken
-        # 3) Sonst Warten
         decision = "Warten"
+        reasons = []
 
         if days_left is not None:
-            reason_parts.append(f"Reichweite: {days_left} Tage")
+            reasons.append(f"Reichweite: {days_left} Tage")
             if days_left < min_days_left:
                 decision = "Tanken"
-                reason_parts.append(f"unter Schwellwert {min_days_left} Tage")
+                reasons.append(f"unter {min_days_left} Tagen")
 
         if price_delta is not None:
-            reason_parts.append(f"Preis-Delta: {price_delta} €/L")
+            reasons.append(f"Preis-Delta: {price_delta} €/L")
             if price_delta <= delta_threshold:
                 decision = "Tanken"
-                reason_parts.append(f"Delta unter {delta_threshold} €/L")
-
-        last = get_last_tank_event(self.hass, self.entry)
-        if last:
-            reason_parts.append(f"Letzter Preis: {last.get('price_per_liter')} €/L")
+                reasons.append(f"Delta unter {delta_threshold} €/L")
 
         self._state = decision
-        self._attrs["reason"] = " | ".join(reason_parts)
+        self._attrs["reason"] = " | ".join(reasons)

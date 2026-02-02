@@ -107,3 +107,73 @@ Alle Felder haben Tooltips, die erklären, was benötigt wird.
 ## 📁 Datenhaltung
 
 Fuel Watcher speichert Daten in:
+
+custom_components/fuel_watcher/data/<entry_id>.json
+
+
+Darin enthalten:
+- Odometer‑Historie
+- Preis‑Historie
+- Tankhistorie
+- Wochentags‑Verbrauch
+
+---
+
+## 🧠 Strategie‑Engine
+
+Fuel Watcher entscheidet zwischen:
+
+- **„Tanken“**  
+- **„Warten“**
+
+Basierend auf:
+- Reichweite in km
+- Reichweite in Tagen
+- Verbrauch morgen
+- Preis‑Schwellen
+- Preis‑Delta
+- Preis‑Spike
+- Tankstellenwechsel
+- Sicherheitsreserve
+
+---
+
+## 🗺 Navigation
+
+Jede Tankempfehlung enthält:
+- Adresse der Tankstelle
+- Google‑Maps‑Link
+- Apple‑Maps‑Link (optional)
+- Waze‑Link (optional)
+
+---
+
+## 🧪 Testen
+
+Service:
+
+fuel_watcher.send_test_notification
+
+Options‑Flow:
+**„Testnachricht senden“**
+
+---
+
+## 🧩 Roadmap
+
+- Preisprognosen
+- Monatsberichte
+- Kosten pro km
+- Tankstellenranking
+- Automatische Erkennung von Tankvorgängen über Fuel‑Level‑Sprünge
+
+---
+
+## ❤️ Support
+
+Issues & Feature Requests:  
+`https://github.com/<dein-repo>/fuel_watcher/issues`
+
+---
+
+Fuel Watcher – weil Tanken smarter geht 🚗💡⛽

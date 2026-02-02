@@ -4,8 +4,6 @@ from homeassistant.components.sensor import SensorEntity
 
 
 class BaseDerivedSensor(SensorEntity):
-    """Base class for derived Fuel Watcher sensors."""
-
     def __init__(self, main_sensor, name: str, attribute: str, unit: str | None = None):
         self._main = main_sensor
         self._attr_name = name
@@ -99,4 +97,24 @@ class FuelWatcherDaysLeftSensor(BaseDerivedSensor):
             "Fuel Watcher Tage Reichweite",
             "days_left",
             "d",
+        )
+
+
+class FuelWatcherPriceDeltaSensor(BaseDerivedSensor):
+    def __init__(self, main_sensor):
+        super().__init__(
+            main_sensor,
+            "Fuel Watcher Preisänderung",
+            "price_delta",
+            "€/l",
+        )
+
+
+class FuelWatcherPriceDeltaPercentSensor(BaseDerivedSensor):
+    def __init__(self, main_sensor):
+        super().__init__(
+            main_sensor,
+            "Fuel Watcher Preisänderung Prozent",
+            "price_delta_percent",
+            "%",
         )

@@ -17,7 +17,7 @@ from .location import (
     FuelWatcherLocationSensor,
     FuelWatcherDistanceSensor,
 )
-
+from .tank_history_sensor import FuelWatcherTankHistorySensor
 
 async def async_setup_entry(
     hass: HomeAssistant,

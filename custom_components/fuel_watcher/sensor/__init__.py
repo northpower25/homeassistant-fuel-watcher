@@ -22,6 +22,7 @@ from .derived import (
     FuelWatcherPriceDeltaSensor,
     FuelWatcherPriceDeltaPercentSensor,
 )
+from .tank_history import FuelWatcherTankHistorySensor
 
 
 async def async_setup_entry(
@@ -50,5 +51,8 @@ async def async_setup_entry(
         FuelWatcherPriceDeltaSensor(main_sensor),
         FuelWatcherPriceDeltaPercentSensor(main_sensor),
     ]
+     tank_history_sensor = FuelWatcherTankHistorySensor(hass, entry)
+
+    async_add_entities([main_sensor, diag_sensor, location_sensor, tank_history_sensor] + derived_sensors)
 
     async_add_entities([main_sensor, diag_sensor, location_sensor] + derived_sensors)

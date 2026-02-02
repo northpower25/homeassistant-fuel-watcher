@@ -77,6 +77,10 @@ Im Options‑Flow:
 2. Home Assistant neu starten  
 3. Integration hinzufügen
 
+### Zugehöriges Dashboard (über HACS installierbar)
+
+https://github.com/northpower25/fuel-watcher-dashboard/
+
 ---
 
 ## ⚙️ Konfiguration

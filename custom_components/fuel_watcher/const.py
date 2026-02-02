@@ -47,9 +47,10 @@ WEEKDAY_OPTIONS = [
 CONF_NOTIFY_ENABLED = "notify_enabled"
 CONF_NOTIFY_ON_DECISION_TANKEN = "notify_on_decision_tanken"
 CONF_NOTIFY_ON_PRICE_THRESHOLD = "notify_on_price_threshold"
+CONF_NOTIFY_ON_PRICE_DELTA = "notify_on_price_delta"
+CONF_NOTIFY_ON_PRICE_SPIKE = "notify_on_price_spike"
 CONF_NOTIFY_ON_RANGE_KM = "notify_on_range_km"
 CONF_NOTIFY_ON_RANGE_DAYS = "notify_on_range_days"
-CONF_NOTIFY_ON_PRICE_SPIKE = "notify_on_price_spike"
 CONF_NOTIFY_ON_STATION_CHANGE = "notify_on_station_change"
 CONF_NOTIFY_ON_API_ERROR = "notify_on_api_error"
 
@@ -57,25 +58,43 @@ CONF_NOTIFY_RANGE_KM_THRESHOLD = "notify_range_km_threshold"
 CONF_NOTIFY_RANGE_DAYS_THRESHOLD = "notify_range_days_threshold"
 CONF_NOTIFY_PRICE_SPIKE_PERCENT = "notify_price_spike_percent"
 
+CONF_PRICE_MODE = "price_mode"  # fixed | percent | absolute
+CONF_PRICE_DELTA_PERCENT = "price_delta_percent"
+CONF_PRICE_DELTA_ABSOLUTE = "price_delta_absolute"
+
 CONF_NOTIFY_MSG_TANKEN = "notify_msg_tanken"
 CONF_NOTIFY_MSG_PRICE = "notify_msg_price"
+CONF_NOTIFY_MSG_PRICE_DELTA = "notify_msg_price_delta"
+CONF_NOTIFY_MSG_PRICE_SPIKE = "notify_msg_price_spike"
 CONF_NOTIFY_MSG_RANGE_KM = "notify_msg_range_km"
 CONF_NOTIFY_MSG_RANGE_DAYS = "notify_msg_range_days"
-CONF_NOTIFY_MSG_PRICE_SPIKE = "notify_msg_price_spike"
 CONF_NOTIFY_MSG_STATION_CHANGE = "notify_msg_station_change"
 CONF_NOTIFY_MSG_API_ERROR = "notify_msg_api_error"
+
+# Tank history (manuelle Erfassung)
+CONF_TANK_EVENT_PRICE = "tank_event_price"
+CONF_TANK_EVENT_LITERS = "tank_event_liters"
+CONF_TANK_EVENT_TOTAL = "tank_event_total"
+CONF_TANK_EVENT_ODOMETER = "tank_event_odometer"
 
 # Default messages (humorvoll, Markdown + Emojis)
 DEFAULT_NOTIFY_MSG_TANKEN = (
     "⛽ *Dein Auto flüstert: „Bitte tank mich…“*\n"
     "Grund: _{reason}_\n"
     "Preis: `{price} €/l`\n"
-    "Reichweite: `{range_km} km`"
+    "Reichweite: `{range_km} km`\n"
+    "📍 [Navigation](https://www.google.com/maps/search/?api=1&query={lat},{lng})"
 )
 
 DEFAULT_NOTIFY_MSG_PRICE = (
     "💰 *Schnäppchen‑Alarm!*\n"
     "Der Preis ist jetzt bei `{price} €/l` — gönn dir!"
+)
+
+DEFAULT_NOTIFY_MSG_PRICE_DELTA = (
+    "📉 *Preisbewegung entdeckt!*\n"
+    "Der Preis hat sich um `{delta} €/l` ({delta_percent} %) verändert.\n"
+    "Aktueller Preis: `{price} €/l`"
 )
 
 DEFAULT_NOTIFY_MSG_RANGE_KM = (
@@ -95,7 +114,8 @@ DEFAULT_NOTIFY_MSG_PRICE_SPIKE = (
 
 DEFAULT_NOTIFY_MSG_STATION_CHANGE = (
     "⛽ *Neue Tankstelle im Spiel!*\n"
-    "Jetzt: _{station}_ (`{price} €/l`, Entfernung `{distance_km} km`)."
+    "Jetzt: _{station}_ (`{price} €/l`, Entfernung `{distance_km} km`).\n"
+    "📍 [Navigation](https://www.google.com/maps/search/?api=1&query={lat},{lng})"
 )
 
 DEFAULT_NOTIFY_MSG_API_ERROR = (

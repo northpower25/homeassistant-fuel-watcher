@@ -4,9 +4,16 @@ from homeassistant.components.sensor import SensorEntity
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 
-from ..statistics import get_expected_consumption_tomorrow, compute_days_left
+from ..statistics import get_expected_consumption_tomorrow
+from ..statistics_engine import (
+    update_odometer_history,
+    compute_weekday_consumption,
+    compute_days_left_from_weekdays,
+)
 from ..sources import get_price_data
 from ..notify import send_notification
+from ..price_engine import update_price_history, compute_price_delta
+from ..tank_history import append_tank_event, get_last_tank_event
 from ..const import (
     DOMAIN,
     CONF_ENTITY_FUEL_LEVEL,
@@ -21,12 +28,13 @@ from ..const import (
     CONF_NOTIFY_MSG_RANGE_DAYS,
     DEFAULT_NOTIFY_MSG_TANKEN,
     DEFAULT_NOTIFY_MSG_RANGE_DAYS,
+    CONF_NOTIFY_ON_PRICE_DELTA,
+    CONF_NOTIFY_MSG_PRICE_DELTA,
+    DEFAULT_NOTIFY_MSG_PRICE_DELTA,
 )
 
 
 class FuelWatcherSensor(SensorEntity):
-    """Main Fuel Watcher sensor."""
-
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry):
         self.hass = hass
         self.entry = entry
@@ -58,20 +66,39 @@ class FuelWatcherSensor(SensorEntity):
         if price_data:
             self._state = price_data.get("price")
             self._attrs["price"] = price_data.get("price")
-            self._attrs["station"] = price_data.get("name") or price_data.get("station")
+            self._attrs["station"] = price_data.get("station")
             self._attrs["station_lat"] = price_data.get("lat")
             self._attrs["station_lng"] = price_data.get("lng")
             self._attrs["distance_km"] = price_data.get("distance_km")
             self._attrs["fuel"] = price_data.get("fuel")
+            self._attrs["station_id"] = price_data.get("id")
+            self._attrs["station_street"] = price_data.get("street")
+            self._attrs["station_house_number"] = price_data.get("houseNumber")
+            self._attrs["station_post_code"] = price_data.get("postCode")
+            self._attrs["station_place"] = price_data.get("place")
 
         self._update_vehicle_data()
 
-        expected_tomorrow = get_expected_consumption_tomorrow(self.entry)
+        # Statistik aktualisieren
+        odometer = self._attrs.get("odometer")
+        update_odometer_history(self.hass, self.entry, odometer)
+
+        options = self.entry.options or self.entry.data
+        weekday_consumption = compute_weekday_consumption(self.hass, self.entry, options)
+
+        expected_tomorrow = get_expected_consumption_tomorrow(self.entry, weekday_consumption)
         self._attrs["expected_consumption_tomorrow"] = expected_tomorrow
 
         range_km = self._attrs.get("range_km")
-        days_left = compute_days_left(self.entry, range_km) if range_km is not None else 0.0
+        days_left = compute_days_left_from_weekdays(self.entry, weekday_consumption, range_km)
         self._attrs["days_left"] = days_left
+
+        # Preis-Historie & Delta
+        price = self._attrs.get("price")
+        update_price_history(self.hass, self.entry, price)
+        price_delta_info = compute_price_delta(self.hass, self.entry, price)
+        self._attrs["price_delta"] = price_delta_info.get("delta")
+        self._attrs["price_delta_percent"] = price_delta_info.get("delta_percent")
 
         decision, reason = self._compute_strategy(expected_tomorrow, days_left)
         self._attrs["strategy_decision"] = decision
@@ -79,7 +106,7 @@ class FuelWatcherSensor(SensorEntity):
 
         self._attrs["health_score"] = self._compute_health_score()
 
-        await self._maybe_send_notifications(decision, reason, days_left)
+        await self._maybe_send_notifications(decision, reason, days_left, price_delta_info)
 
     def _update_vehicle_data(self):
         data = self.entry.data
@@ -159,13 +186,21 @@ class FuelWatcherSensor(SensorEntity):
             score -= 20
         return max(0, score)
 
-    async def _maybe_send_notifications(self, decision: str, reason: str, days_left: float):
+    async def _maybe_send_notifications(
+        self,
+        decision: str,
+        reason: str,
+        days_left: float,
+        price_delta_info: dict,
+    ):
         options = self.entry.options or self.entry.data
         if not options.get(CONF_NOTIFY_ENABLED, False):
             return
 
         price = self._attrs.get("price")
         range_km = self._attrs.get("range_km")
+        lat = self._attrs.get("station_lat")
+        lng = self._attrs.get("station_lng")
 
         if (
             options.get(CONF_NOTIFY_ON_DECISION_TANKEN, True)
@@ -177,6 +212,8 @@ class FuelWatcherSensor(SensorEntity):
                 reason=reason,
                 price=price if price is not None else "n/a",
                 range_km=range_km if range_km is not None else "n/a",
+                lat=lat if lat is not None else 0,
+                lng=lng if lng is not None else 0,
             )
             await send_notification(self.hass, self.entry, text)
 
@@ -187,4 +224,17 @@ class FuelWatcherSensor(SensorEntity):
                 text = template.format(days_left=days_left)
                 await send_notification(self.hass, self.entry, text)
 
+        if options.get(CONF_NOTIFY_ON_PRICE_DELTA, False) and price_delta_info.get("trigger"):
+            template = options.get(CONF_NOTIFY_MSG_PRICE_DELTA, DEFAULT_NOTIFY_MSG_PRICE_DELTA)
+            text = template.format(
+                delta=price_delta_info.get("delta"),
+                delta_percent=price_delta_info.get("delta_percent"),
+                price=price,
+            )
+            await send_notification(self.hass, self.entry, text)
+
         self._last_decision = decision
+
+        # Beispiel: Tankvorgang manuell (hier nur als Hook – echte Erfassung über OptionsFlow)
+        last_tank = get_last_tank_event(self.hass, self.entry)
+        self._attrs["last_tank_event"] = last_tank

@@ -39,10 +39,14 @@ async def async_setup_entry(
 
         # C: Diagnostics
         FuelWatcherDiagnosticsSensor(hass, entry),
-
+        
+        # E: Tank History
+        FuelWatcherTankHistorySensor(hass, entry),
         # D: Location
         FuelWatcherLocationSensor(hass, entry),
         FuelWatcherDistanceSensor(hass, entry),
+        
+
     ]
 
     async_add_entities(entities)

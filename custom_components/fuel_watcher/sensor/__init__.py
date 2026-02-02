@@ -18,6 +18,7 @@ from .derived import (
     FuelWatcherHealthScoreSensor,
     FuelWatcherLastErrorSensor,
     FuelWatcherExpectedConsumptionTomorrowSensor,
+    FuelWatcherDaysLeftSensor,
 )
 
 
@@ -26,7 +27,6 @@ async def async_setup_entry(
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ):
-    """Set up Fuel Watcher sensors."""
     main_sensor = FuelWatcherSensor(hass, entry)
     diag_sensor = FuelWatcherDiagnosticsSensor(hass, entry, main_sensor)
     location_sensor = FuelWatcherLocationSensor(hass, entry)
@@ -44,6 +44,7 @@ async def async_setup_entry(
         FuelWatcherHealthScoreSensor(main_sensor),
         FuelWatcherLastErrorSensor(main_sensor),
         FuelWatcherExpectedConsumptionTomorrowSensor(main_sensor),
+        FuelWatcherDaysLeftSensor(main_sensor),
     ]
 
     async_add_entities([main_sensor, diag_sensor, location_sensor] + derived_sensors)

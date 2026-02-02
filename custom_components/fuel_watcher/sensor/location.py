@@ -20,7 +20,7 @@ class FuelWatcherLocationSensor(SensorEntity):
 
     @property
     def native_value(self):
-        return self._state  # z.B. Name der Tankstelle
+        return self._state  # Name der Tankstelle
 
     @property
     def extra_state_attributes(self):
@@ -36,17 +36,38 @@ class FuelWatcherLocationSensor(SensorEntity):
         }
 
     async def async_update(self) -> None:
-        # Platzhalter: hier später API-Daten eintragen
-        self._state = None
-        self._attrs["lat"] = None
-        self._attrs["lon"] = None
-        self._attrs["google_maps"] = None
-        self._attrs["apple_maps"] = None
-        self._attrs["waze"] = None
+        data = self.hass.data.get(DOMAIN, {}).get(self.entry.entry_id, {})
+        station = data.get("best_station")
+
+        if not station:
+            self._state = None
+            self._attrs = {}
+            return
+
+        self._state = station.get("name")
+        lat = station.get("lat")
+        lon = station.get("lon")
+
+        self._attrs = {
+            "brand": station.get("brand"),
+            "street": station.get("street"),
+            "house_number": station.get("house_number"),
+            "post_code": station.get("post_code"),
+            "city": station.get("city"),
+            "lat": lat,
+            "lon": lon,
+            "price": station.get("price"),
+            "distance_km": station.get("distance_km"),
+        }
+
+        if lat is not None and lon is not None:
+            self._attrs["google_maps"] = f"https://maps.google.com/?q={lat},{lon}"
+            self._attrs["apple_maps"] = f"http://maps.apple.com/?ll={lat},{lon}"
+            self._attrs["waze"] = f"https://waze.com/ul?ll={lat},{lon}&navigate=yes"
 
 
 class FuelWatcherDistanceSensor(SensorEntity):
-    """Entfernung zur empfohlenen Tankstelle."""
+    """Entfernung zur empfohlenen Tankstelle (falls von der API geliefert)."""
 
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry) -> None:
         self.hass = hass
@@ -73,5 +94,15 @@ class FuelWatcherDistanceSensor(SensorEntity):
         }
 
     async def async_update(self) -> None:
-        # Platzhalter: hier später Entfernung berechnen
-        self._state = None
+        data = self.hass.data.get(DOMAIN, {}).get(self.entry.entry_id, {})
+        station = data.get("best_station")
+
+        if not station:
+            self._state = None
+            return
+
+        distance = station.get("distance_km")
+        try:
+            self._state = round(float(distance), 2) if distance is not None else None
+        except (TypeError, ValueError):
+            self._state = None

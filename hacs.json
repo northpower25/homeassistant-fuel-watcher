@@ -1,7 +1,7 @@
 {
   "name": "Fuel Watcher",
   "content_in_root": false,
-  "domains": ["sensor"],
+  "domains": ["sensor","notify"],
   "country": "DE",
   "homeassistant": "2026.1.0",
   "render_readme": true,

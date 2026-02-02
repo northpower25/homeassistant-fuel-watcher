@@ -27,27 +27,38 @@ from .const import (
     CONF_CONSUMPTION_SUNDAY,
     CONF_NOTIFY_ENABLED,
     CONF_NOTIFY_ON_DECISION_TANKEN,
+    CONF_NOTIFY_ON_PRICE_THRESHOLD,
+    CONF_NOTIFY_ON_PRICE_DELTA,
+    CONF_NOTIFY_ON_PRICE_SPIKE,
+    CONF_NOTIFY_ON_RANGE_KM,
     CONF_NOTIFY_ON_RANGE_DAYS,
+    CONF_NOTIFY_RANGE_KM_THRESHOLD,
     CONF_NOTIFY_RANGE_DAYS_THRESHOLD,
-    CONF_NOTIFY_MSG_TANKEN,
-    CONF_NOTIFY_MSG_RANGE_DAYS,
-    DEFAULT_NOTIFY_MSG_TANKEN,
-    DEFAULT_NOTIFY_MSG_RANGE_DAYS,
     CONF_PRICE_MODE,
     CONF_PRICE_DELTA_PERCENT,
     CONF_PRICE_DELTA_ABSOLUTE,
-    CONF_NOTIFY_ON_PRICE_DELTA,
+    CONF_NOTIFY_MSG_TANKEN,
+    CONF_NOTIFY_MSG_PRICE,
     CONF_NOTIFY_MSG_PRICE_DELTA,
+    CONF_NOTIFY_MSG_PRICE_SPIKE,
+    CONF_NOTIFY_MSG_RANGE_KM,
+    CONF_NOTIFY_MSG_RANGE_DAYS,
+    CONF_NOTIFY_MSG_STATION_CHANGE,
+    CONF_NOTIFY_MSG_API_ERROR,
+    DEFAULT_NOTIFY_MSG_TANKEN,
     DEFAULT_NOTIFY_MSG_PRICE_DELTA,
-    CONF_NOTIFY_ON_PRICE_THRESHOLD,
-    CONF_NOTIFY_ON_RANGE_KM,
-    CONF_NOTIFY_RANGE_KM_THRESHOLD,
+    DEFAULT_NOTIFY_MSG_RANGE_DAYS,
+    CONF_TANK_HISTORY_RETENTION_MONTHS,
+    DEFAULT_TANK_HISTORY_RETENTION_MONTHS,
 )
+
 from .notify import send_test_notification
 from .tank_history import append_tank_event
 
 
 class FuelWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+    """Initial setup flow."""
+
     async def async_step_user(self, user_input=None):
         if user_input is not None:
             return self.async_create_entry(title="Fuel Watcher", data=user_input)
@@ -88,16 +99,21 @@ class FuelWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
 
 class FuelWatcherOptionsFlow(config_entries.OptionsFlow):
+    """Options flow for Fuel Watcher."""
+
     def __init__(self, entry):
         self.entry = entry
 
     async def async_step_init(self, user_input=None):
+        """Main options menu."""
         if user_input is not None:
+
+            # Testnachricht senden
             if user_input.get("test_notification", False):
                 await send_test_notification(self.hass, self.entry)
                 user_input.pop("test_notification", None)
 
-            # Tankvorgang erfassen (optional)
+            # Tankvorgang erfassen
             price = user_input.pop("tank_event_price", None)
             liters = user_input.pop("tank_event_liters", None)
             total = user_input.pop("tank_event_total", None)
@@ -123,6 +139,7 @@ class FuelWatcherOptionsFlow(config_entries.OptionsFlow):
                         liters=liters_f,
                         total_cost=total_f,
                         odometer=odometer_f,
+                        source="manual",
                     )
 
             return self.async_create_entry(title="", data=user_input)
@@ -134,17 +151,21 @@ class FuelWatcherOptionsFlow(config_entries.OptionsFlow):
             return options.get(key, data.get(key, default))
 
         schema = vol.Schema({
+
+            # Basis
             vol.Required(CONF_RADIUS, default=opt(CONF_RADIUS, 5)): vol.Coerce(int),
             vol.Required(CONF_FUEL, default=opt(CONF_FUEL, "e5")): vol.In(["e5", "e10", "diesel", "superplus", "lpg", "cng"]),
             vol.Required(CONF_PRICE_THRESHOLD, default=opt(CONF_PRICE_THRESHOLD, 0.0)): vol.Coerce(float),
             vol.Required(CONF_DISTANCE_THRESHOLD, default=opt(CONF_DISTANCE_THRESHOLD, 10.0)): vol.Coerce(float),
 
+            # Fahrzeug-Entitäten
             vol.Optional(CONF_ENTITY_FUEL_LEVEL, default=opt(CONF_ENTITY_FUEL_LEVEL, "")): str,
             vol.Optional(CONF_ENTITY_RANGE, default=opt(CONF_ENTITY_RANGE, "")): str,
             vol.Optional(CONF_ENTITY_CONSUMPTION, default=opt(CONF_ENTITY_CONSUMPTION, "")): str,
             vol.Optional(CONF_ENTITY_ODOMETER, default=opt(CONF_ENTITY_ODOMETER, "")): str,
             vol.Optional(CONF_ENTITY_LOCATION, default=opt(CONF_ENTITY_LOCATION, "")): str,
 
+            # Verbrauch
             vol.Optional(CONF_CONSUMPTION_MONDAY, default=opt(CONF_CONSUMPTION_MONDAY, 50)): vol.Coerce(int),
             vol.Optional(CONF_CONSUMPTION_TUESDAY, default=opt(CONF_CONSUMPTION_TUESDAY, 50)): vol.Coerce(int),
             vol.Optional(CONF_CONSUMPTION_WEDNESDAY, default=opt(CONF_CONSUMPTION_WEDNESDAY, 50)): vol.Coerce(int),
@@ -153,6 +174,7 @@ class FuelWatcherOptionsFlow(config_entries.OptionsFlow):
             vol.Optional(CONF_CONSUMPTION_SATURDAY, default=opt(CONF_CONSUMPTION_SATURDAY, 20)): vol.Coerce(int),
             vol.Optional(CONF_CONSUMPTION_SUNDAY, default=opt(CONF_CONSUMPTION_SUNDAY, 10)): vol.Coerce(int),
 
+            # Benachrichtigungen
             vol.Optional(CONF_NOTIFY_ENABLED, default=opt(CONF_NOTIFY_ENABLED, True)): bool,
             vol.Optional(CONF_NOTIFY_ON_DECISION_TANKEN, default=opt(CONF_NOTIFY_ON_DECISION_TANKEN, True)): bool,
             vol.Optional(CONF_NOTIFY_ON_PRICE_THRESHOLD, default=opt(CONF_NOTIFY_ON_PRICE_THRESHOLD, False)): bool,
@@ -163,16 +185,26 @@ class FuelWatcherOptionsFlow(config_entries.OptionsFlow):
             vol.Optional(CONF_NOTIFY_RANGE_KM_THRESHOLD, default=opt(CONF_NOTIFY_RANGE_KM_THRESHOLD, 100.0)): vol.Coerce(float),
             vol.Optional(CONF_NOTIFY_RANGE_DAYS_THRESHOLD, default=opt(CONF_NOTIFY_RANGE_DAYS_THRESHOLD, 2.0)): vol.Coerce(float),
 
+            # Preis-Delta
             vol.Optional(CONF_PRICE_MODE, default=opt(CONF_PRICE_MODE, "fixed")): vol.In(["fixed", "percent", "absolute"]),
             vol.Optional(CONF_PRICE_DELTA_PERCENT, default=opt(CONF_PRICE_DELTA_PERCENT, 5.0)): vol.Coerce(float),
             vol.Optional(CONF_PRICE_DELTA_ABSOLUTE, default=opt(CONF_PRICE_DELTA_ABSOLUTE, 0.10)): vol.Coerce(float),
 
+            # Nachrichtentexte
             vol.Optional(CONF_NOTIFY_MSG_TANKEN, default=opt(CONF_NOTIFY_MSG_TANKEN, DEFAULT_NOTIFY_MSG_TANKEN)): str,
             vol.Optional(CONF_NOTIFY_MSG_RANGE_DAYS, default=opt(CONF_NOTIFY_MSG_RANGE_DAYS, DEFAULT_NOTIFY_MSG_RANGE_DAYS)): str,
             vol.Optional(CONF_NOTIFY_MSG_PRICE_DELTA, default=opt(CONF_NOTIFY_MSG_PRICE_DELTA, DEFAULT_NOTIFY_MSG_PRICE_DELTA)): str,
 
+            # Tankhistorie – Aufbewahrungszeitraum
+            vol.Optional(
+                CONF_TANK_HISTORY_RETENTION_MONTHS,
+                default=opt(CONF_TANK_HISTORY_RETENTION_MONTHS, DEFAULT_TANK_HISTORY_RETENTION_MONTHS),
+            ): vol.Coerce(int),
+
+            # Testnachricht
             vol.Optional("test_notification", default=False): bool,
 
+            # Tankvorgang erfassen
             vol.Optional("tank_event_price", default=""): str,
             vol.Optional("tank_event_liters", default=""): str,
             vol.Optional("tank_event_total", default=""): str,

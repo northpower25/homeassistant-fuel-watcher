@@ -27,7 +27,7 @@ from .best_price import FuelWatcherBestPriceSensor
 from .strategy import FuelWatcherStrategySensor
 from .range_days import FuelWatcherRangeDaysSensor
 from .vehicle_data import FuelWatcherVehicleDataSensor
-
+from .debug import FuelWatcherDebugSensor
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -41,6 +41,7 @@ async def async_setup_entry(
     sensors.append(FuelWatcherBestPriceSensor(hass, entry))
     sensors.append(FuelWatcherStrategySensor(hass, entry))
     sensors.append(FuelWatcherRangeDaysSensor(hass, entry))
+    sensors.append(FuelWatcherDebugSensor(hass, entry))
 
     # Fahrzeugdaten-Sensor nur, wenn mindestens eine Fahrzeug-Entität gesetzt ist
     vehicle_entities = [

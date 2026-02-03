@@ -20,7 +20,7 @@ from homeassistant.helpers.event import async_track_time_interval
 from .const import DOMAIN, PLATFORMS
 from .sources.tankerkoenig import update_tankerkoenig
 from .storage import load_data
-from .telegram import send_price_notification
+from .telegram_engine import send_price_notification
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -83,7 +83,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         await clear_tank_history(hass, entry)
 
     async def _test(call):
-        from .telegram import build_notification
+        from .telegram_engine import build_notification
         msg = await build_notification(
             hass,
             entry,

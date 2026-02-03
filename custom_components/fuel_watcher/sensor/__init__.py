@@ -1,3 +1,4 @@
+# Commit: fix: correct tank history sensor import path
 from __future__ import annotations
 
 from homeassistant.core import HomeAssistant
@@ -25,24 +26,19 @@ async def async_setup_entry(
     """Set up all Fuel Watcher sensors."""
 
     entities = [
-        # Hauptsensor
         FuelWatcherMainSensor(hass, entry),
 
-        # Strategie-Sensoren
         FuelWatcherDecisionSensor(hass, entry),
         FuelWatcherRangeKmSensor(hass, entry),
         FuelWatcherDaysLeftSensor(hass, entry),
         FuelWatcherPriceDeltaSensor(hass, entry),
         FuelWatcherPriceSpikeSensor(hass, entry),
 
-        # Diagnose
         FuelWatcherDiagnosticsSensor(hass, entry),
 
-        # Location
         FuelWatcherLocationSensor(hass, entry),
         FuelWatcherDistanceSensor(hass, entry),
 
-        # Tankhistorie
         FuelWatcherTankHistorySensor(hass, entry),
     ]
 

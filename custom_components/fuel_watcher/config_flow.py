@@ -1,14 +1,18 @@
 """
-Commit: feat(config_flow): add full options flow with range entity, thresholds, telegram test and spike settings
+Commit: feat(config_flow): add vehicle_name and vehicle entity selection
+(odometer, fuel level, location, consumption)
 
 Fuel Watcher – Config Flow
 --------------------------
-Dieser Flow bietet:
-- Auswahl der Range-Entity
-- Preis-Spike-Schwelle
-- Decision-Delta-Schwelle
-- Min. Days Left
-- Testnachricht senden
+Erweitert um:
+- vehicle_name (Kennzeichen oder Fahrzeugname)
+- entity_odometer
+- entity_fuel_level
+- entity_location
+- entity_consumption
+
+Diese Werte werden NICHT als eigene Entitäten erzeugt,
+sondern Fuel Watcher liest die Daten direkt aus den angegebenen Entitäten.
 """
 
 from __future__ import annotations
@@ -19,29 +23,63 @@ from homeassistant import config_entries
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import entity_registry as er
 
-from .const import DOMAIN
+from .const import (
+    DOMAIN,
+    CONF_TANKERKOENIG_API,
+    CONF_TELEGRAM_TOKEN,
+    CONF_TELEGRAM_CHAT_ID,
+    CONF_RADIUS,
+    CONF_FUEL_TYPE,
+    CONF_VEHICLE_NAME,
+    CONF_ENTITY_RANGE,
+    CONF_ENTITY_ODOMETER,
+    CONF_ENTITY_FUEL_LEVEL,
+    CONF_ENTITY_LOCATION,
+    CONF_ENTITY_CONSUMPTION,
+)
 
 
-def _get_number_entities(hass: HomeAssistant):
-    """Return list of number-like entities (km range sensors)."""
+def _get_all_entities(hass: HomeAssistant):
+    """Return list of all entities for dropdown selection."""
     registry = er.async_get(hass)
     return [
         (entity.entity_id, entity.entity_id)
         for entity in registry.entities.values()
-        if entity.platform != DOMAIN
     ]
 
 
 class FuelWatcherConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Main config flow."""
 
-    VERSION = 1
+    VERSION = 2
 
     async def async_step_user(self, user_input=None):
-        return self.async_create_entry(title="Fuel Watcher", data={})
+        hass = self.hass
 
-    async def async_step_init(self, user_input=None):
-        return self.async_step_user()
+        if user_input is not None:
+            return self.async_create_entry(title=user_input.get(CONF_VEHICLE_NAME), data=user_input)
+
+        entities = _get_all_entities(hass)
+
+        schema = vol.Schema(
+            {
+                vol.Required(CONF_VEHICLE_NAME): str,
+                vol.Required(CONF_TANKERKOENIG_API): str,
+                vol.Required(CONF_TELEGRAM_TOKEN): str,
+                vol.Required(CONF_TELEGRAM_CHAT_ID): str,
+                vol.Required(CONF_RADIUS, default=5): int,
+                vol.Required(CONF_FUEL_TYPE, default="e5"): vol.In(["e5", "e10", "diesel"]),
+
+                # Fahrzeugdaten
+                vol.Optional(CONF_ENTITY_RANGE): vol.In(entities),
+                vol.Optional(CONF_ENTITY_ODOMETER): vol.In(entities),
+                vol.Optional(CONF_ENTITY_FUEL_LEVEL): vol.In(entities),
+                vol.Optional(CONF_ENTITY_LOCATION): vol.In(entities),
+                vol.Optional(CONF_ENTITY_CONSUMPTION): vol.In(entities),
+            }
+        )
+
+        return self.async_show_form(step_id="user", data_schema=schema)
 
 
 class FuelWatcherOptionsFlow(config_entries.OptionsFlow):
@@ -56,29 +94,35 @@ class FuelWatcherOptionsFlow(config_entries.OptionsFlow):
         if user_input is not None:
             return self.async_create_entry(title="", data=user_input)
 
-        number_entities = _get_number_entities(hass)
+        entities = _get_all_entities(hass)
 
         schema = vol.Schema(
             {
+                # Fahrzeugdaten erneut konfigurierbar
                 vol.Optional(
-                    "range_entity",
-                    default=self.entry.options.get("range_entity"),
-                ): vol.In(number_entities),
+                    CONF_ENTITY_RANGE,
+                    default=self.entry.options.get(CONF_ENTITY_RANGE, self.entry.data.get(CONF_ENTITY_RANGE)),
+                ): vol.In(entities),
 
                 vol.Optional(
-                    "price_spike_threshold",
-                    default=self.entry.options.get("price_spike_threshold", 0.08),
-                ): float,
+                    CONF_ENTITY_ODOMETER,
+                    default=self.entry.options.get(CONF_ENTITY_ODOMETER, self.entry.data.get(CONF_ENTITY_ODOMETER)),
+                ): vol.In(entities),
 
                 vol.Optional(
-                    "decision_delta_threshold",
-                    default=self.entry.options.get("decision_delta_threshold", -0.03),
-                ): float,
+                    CONF_ENTITY_FUEL_LEVEL,
+                    default=self.entry.options.get(CONF_ENTITY_FUEL_LEVEL, self.entry.data.get(CONF_ENTITY_FUEL_LEVEL)),
+                ): vol.In(entities),
 
                 vol.Optional(
-                    "min_days_left",
-                    default=self.entry.options.get("min_days_left", 2),
-                ): float,
+                    CONF_ENTITY_LOCATION,
+                    default=self.entry.options.get(CONF_ENTITY_LOCATION, self.entry.data.get(CONF_ENTITY_LOCATION)),
+                ): vol.In(entities),
+
+                vol.Optional(
+                    CONF_ENTITY_CONSUMPTION,
+                    default=self.entry.options.get(CONF_ENTITY_CONSUMPTION, self.entry.data.get(CONF_ENTITY_CONSUMPTION)),
+                ): vol.In(entities),
             }
         )
 

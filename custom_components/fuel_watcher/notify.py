@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 import logging
-import aiohttp
 import async_timeout
 
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
     CONF_TELEGRAM_TOKEN,
@@ -15,7 +15,7 @@ from .const import (
 _LOGGER = logging.getLogger(__name__)
 
 
-async def _send_telegram_message(token: str, chat_id: str, text: str, parse_mode: str = "Markdown"):
+async def _send_telegram_message(hass: HomeAssistant, token: str, chat_id: str, text: str, parse_mode: str = "Markdown"):
     url = f"https://api.telegram.org/bot{token}/sendMessage"
     payload = {
         "chat_id": chat_id,
@@ -24,17 +24,17 @@ async def _send_telegram_message(token: str, chat_id: str, text: str, parse_mode
         "disable_web_page_preview": False,
     }
 
-    async with aiohttp.ClientSession() as session:
-        try:
-            with async_timeout.timeout(10):
-                async with session.post(url, json=payload) as resp:
-                    if resp.status != 200:
-                        body = await resp.text()
-                        _LOGGER.error("Telegram sendMessage failed: %s - %s", resp.status, body)
-                        return False
-        except Exception as e:
-            _LOGGER.error("Error sending Telegram message: %s", e)
-            return False
+    session = async_get_clientsession(hass)
+    try:
+        with async_timeout.timeout(10):
+            async with session.post(url, json=payload) as resp:
+                if resp.status != 200:
+                    body = await resp.text()
+                    _LOGGER.error("Telegram sendMessage failed: %s - %s", resp.status, body)
+                    return False
+    except Exception as e:
+        _LOGGER.error("Error sending Telegram message: %s", e)
+        return False
 
     return True
 
@@ -47,7 +47,7 @@ async def send_notification(hass: HomeAssistant, entry: ConfigEntry, text: str):
         _LOGGER.warning("Telegram not configured (token/chat_id missing)")
         return
 
-    ok = await _send_telegram_message(token, chat_id, text)
+    ok = await _send_telegram_message(hass, token, chat_id, text)
     if ok:
         _LOGGER.debug("Telegram notification sent successfully")
     else:

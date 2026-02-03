@@ -64,6 +64,23 @@ async def _save_data(hass: HomeAssistant, entry: ConfigEntry, data: dict) -> Non
 
 
 # ---------------------------------------------------------------------------
+# BACKWARDS COMPATIBILITY WRAPPER
+# ---------------------------------------------------------------------------
+
+async def load_data(hass: HomeAssistant, entry: ConfigEntry) -> dict:
+    """
+    Backwards compatible wrapper for older versions.
+
+    Einige ältere Dateien (oder alte HACS-Caches) importieren noch:
+        from .storage import load_data
+
+    Damit diese Version weiterhin funktioniert, ohne dass der Config-Flow crasht,
+    leiten wir den Aufruf einfach an _load_data weiter.
+    """
+    return await _load_data(hass, entry)
+
+
+# ---------------------------------------------------------------------------
 # last_price
 # ---------------------------------------------------------------------------
 

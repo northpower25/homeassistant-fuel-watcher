@@ -79,3 +79,17 @@ async def send_range_days_message(
     text = render_template(template, data)
     await notify_func(hass, entry, text)
     await set_last_telegram(hass, entry, {"text": text})
+
+# ---------------------------------------------------------------------------
+# Backwards compatibility: send_price_notification
+# ---------------------------------------------------------------------------
+
+async def send_price_notification(*args, **kwargs):
+    """Backward compatible alias for send_tanken_message.
+
+    Older versions imported:
+        from .telegram_engine import send_price_notification
+
+    We now route this to send_tanken_message to keep behavior consistent.
+    """
+    await send_tanken_message(*args, **kwargs)

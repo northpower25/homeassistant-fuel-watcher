@@ -34,6 +34,9 @@
           "entity_consumption": "Verbrauchs‑Entität"
           "price_drop_percent_threshold": "Preis fällt um mindestens (%)",
           "price_drop_absolute_threshold": "Preis fällt um mindestens (€/L)"
+          "notify_msg_tanken": "Nachrichtenvorlage: Tankempfehlung",
+          "notify_msg_range_days": "Nachrichtenvorlage: Reichweitenwarnung"
+
         }
       }
     }

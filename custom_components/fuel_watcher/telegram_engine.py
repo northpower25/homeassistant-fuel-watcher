@@ -3,9 +3,9 @@ Commit: feat(telegram): add template-based messaging with full variable support
 
 Fuel Watcher – Telegram Template Engine
 ---------------------------------------
-Ermöglicht konfigurierbare Nachrichten mit Variablen:
+Ermöglicht konfigurierbare Nachrichten mit Variablen.
 
-Verfügbare Variablen:
+Verfügbare Variablen (empfohlen):
 - {vehicle}
 - {price}
 - {delta}
@@ -17,19 +17,19 @@ Verfügbare Variablen:
 - {lat}
 - {lng}
 - {reason}
-
-Templates werden im Options-Flow gesetzt und fallen auf Defaults zurück.
 """
 
 from __future__ import annotations
-import logging
 
+import logging
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 
 from .const import (
     CONF_NOTIFY_MSG_TANKEN,
     CONF_NOTIFY_MSG_RANGE_DAYS,
+    DEFAULT_NOTIFY_MSG_TANKEN,
+    DEFAULT_NOTIFY_MSG_RANGE_DAYS,
 )
 from .storage import set_last_telegram
 
@@ -55,6 +55,7 @@ async def send_tanken_message(
     template = (
         entry.options.get(CONF_NOTIFY_MSG_TANKEN)
         or entry.data.get(CONF_NOTIFY_MSG_TANKEN)
+        or DEFAULT_NOTIFY_MSG_TANKEN
     )
 
     text = render_template(template, data)
@@ -72,6 +73,7 @@ async def send_range_days_message(
     template = (
         entry.options.get(CONF_NOTIFY_MSG_RANGE_DAYS)
         or entry.data.get(CONF_NOTIFY_MSG_RANGE_DAYS)
+        or DEFAULT_NOTIFY_MSG_RANGE_DAYS
     )
 
     text = render_template(template, data)

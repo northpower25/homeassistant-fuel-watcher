@@ -1,145 +1,181 @@
+"""
+Commit: feat(statistics): add self-learning consumption and range statistics engine
+
+Fuel Watcher – Statistics Engine
+--------------------------------
+Diese Datei implementiert die selbstlernende Verbrauchs- und Reichweitenlogik,
+wie sie in v0.0.27 beschrieben war – jetzt basierend auf der neuen Storage-Architektur.
+
+Funktionen:
+- Odometer-Verlauf auswerten
+- Tageskilometer berechnen
+- Wochentags-Durchschnittswerte pflegen
+- Durchschnittliche Tageskilometer berechnen
+- Reichweite in Tagen schätzen
+
+Die Rohdaten (odometer_history, weekday_consumption) werden in storage.py gehalten.
+"""
+
 from __future__ import annotations
 
-import json
-import logging
-import os
-from datetime import datetime, timedelta
-from typing import Any
+from datetime import datetime
+from typing import Optional, Dict, Any, List
 
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 
-from .const import DOMAIN, WEEKDAY_OPTIONS
-
-_LOGGER = logging.getLogger(__name__)
+from .storage import load_data, update_weekday_consumption
 
 
-def _get_stats_path(hass: HomeAssistant, entry: ConfigEntry) -> str:
-    base = hass.config.path(f"custom_components/{DOMAIN}/data")
-    os.makedirs(base, exist_ok=True)
-    return os.path.join(base, f"{entry.entry_id}_stats.json")
-
-
-def _load_stats(hass: HomeAssistant, entry: ConfigEntry) -> dict[str, Any]:
-    path = _get_stats_path(hass, entry)
-    if not os.path.exists(path):
-        return {}
+def _parse_ts(ts: str) -> Optional[datetime]:
     try:
-        with open(path, "r", encoding="utf-8") as f:
-            return json.load(f)
-    except Exception as e:
-        _LOGGER.error("Error loading stats file %s: %s", path, e)
-        return {}
+        return datetime.fromisoformat(ts)
+    except Exception:
+        return None
 
 
-def _save_stats(hass: HomeAssistant, entry: ConfigEntry, data: dict[str, Any]) -> None:
-    path = _get_stats_path(hass, entry)
-    try:
-        with open(path, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        _LOGGER.error("Error saving stats file %s: %s", path, e)
-
-
-def update_odometer_history(
+async def get_odometer_history(
     hass: HomeAssistant,
     entry: ConfigEntry,
-    odometer: float | None,
+) -> List[Dict[str, Any]]:
+    """Return full odometer history."""
+    data = await load_data(hass, entry)
+    return data.get("odometer_history", [])
+
+
+async def get_weekday_stats(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+) -> Dict[int, Dict[str, Any]]:
+    """Return weekday consumption statistics."""
+    data = await load_data(hass, entry)
+    return data.get("weekday_consumption", {})
+
+
+async def recompute_weekday_stats(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
 ) -> None:
-    if odometer is None:
+    """
+    Recompute weekday statistics from odometer history.
+
+    Diese Funktion kann genutzt werden, falls sich die Logik ändert oder
+    historische Daten neu berechnet werden sollen.
+    """
+    data = await load_data(hass, entry)
+    odo = data.get("odometer_history", [])
+
+    # Reset stats
+    data["weekday_consumption"] = {}
+    stats = data["weekday_consumption"]
+
+    if len(odo) < 2:
+        # Not enough data
+        await update_weekday_consumption(hass, entry, 0, 0.0)
         return
 
-    stats = _load_stats(hass, entry)
-    history = stats.get("odometer", [])
-    now = datetime.utcnow().isoformat()
+    # Sort by timestamp
+    odo_sorted = sorted(
+        odo,
+        key=lambda x: _parse_ts(x.get("ts") or "") or datetime.min,
+    )
 
-    history.append({"ts": now, "value": odometer})
-    # Begrenzen
-    history = history[-60:]
-    stats["odometer"] = history
-    _save_stats(hass, entry, stats)
+    last = odo_sorted[0]
+    last_ts = _parse_ts(last.get("ts") or "")
+    last_val = last.get("value")
+
+    for entry_ in odo_sorted[1:]:
+        ts = _parse_ts(entry_.get("ts") or "")
+        val = entry_.get("value")
+
+        if ts is None or last_ts is None:
+            last_ts = ts
+            last_val = val
+            continue
+
+        try:
+            km = float(val) - float(last_val)
+        except Exception:
+            last_ts = ts
+            last_val = val
+            continue
+
+        if km <= 0:
+            last_ts = ts
+            last_val = val
+            continue
+
+        weekday = ts.weekday()
+        if weekday not in stats:
+            stats[weekday] = {"km": 0.0, "count": 0}
+
+        stats[weekday]["km"] += km
+        stats[weekday]["count"] += 1
+
+        last_ts = ts
+        last_val = val
+
+    data["weekday_consumption"] = stats
+    from .storage import save_data  # lazy import to avoid cycles
+    await save_data(hass, entry, data)
 
 
-def compute_weekday_consumption(
+async def get_avg_daily_km(
     hass: HomeAssistant,
     entry: ConfigEntry,
-    fallback_options: dict,
-) -> dict[str, float]:
-    """
-    Versucht, aus Odometer-Historie Tageskilometer zu berechnen
-    und daraus Wochentagsdurchschnitt zu bilden.
-    Fällt auf Konfiguration zurück, wenn zu wenig Daten.
-    """
-    stats = _load_stats(hass, entry)
-    history = stats.get("odometer", [])
-    if len(history) < 3:
-        # Zu wenig Daten -> Fallback
-        return {
-            key: float(fallback_options.get(key, 50))
-            for key in WEEKDAY_OPTIONS
-        }
-
-    # Odometer sortieren
-    history_sorted = sorted(history, key=lambda x: x["ts"])
-    daily_km: dict[int, list[float]] = {i: [] for i in range(7)}
-
-    last = None
-    for item in history_sorted:
-        try:
-            ts = datetime.fromisoformat(item["ts"])
-        except Exception:
-            continue
-        value = float(item["value"])
-        if last is not None:
-            last_ts, last_val = last
-            delta_km = value - last_val
-            if delta_km > 0:
-                weekday = ts.weekday()
-                daily_km[weekday].append(delta_km)
-        last = (ts, value)
-
-    result: dict[str, float] = {}
-    for idx, key in enumerate(WEEKDAY_OPTIONS):
-        values = daily_km.get(idx, [])
-        if values:
-            avg = sum(values) / len(values)
-            result[key] = round(avg, 1)
-        else:
-            result[key] = float(fallback_options.get(key, 50))
-
-    stats["weekday_consumption"] = result
-    _save_stats(hass, entry, stats)
-    return result
-
-
-def compute_days_left_from_weekdays(
-    entry: ConfigEntry,
-    weekday_consumption: dict[str, float],
-    range_km: float | None,
+    *,
+    fallback: float = 40.0,
 ) -> float:
-    if range_km is None or range_km <= 0:
-        return 0.0
+    """
+    Compute average daily kilometers based on weekday statistics.
 
-    options = entry.options or entry.data
-    weekday = datetime.now().weekday()
-    remaining = float(range_km)
-    days = 0.0
+    Wenn keine oder zu wenige Daten vorhanden sind, wird der Fallback-Wert genutzt.
+    """
+    stats = await get_weekday_stats(hass, entry)
 
-    for _ in range(30):
-        key = WEEKDAY_OPTIONS[weekday]
-        day_consumption = float(weekday_consumption.get(key, options.get(key, 50)))
-        if day_consumption <= 0:
-            day_consumption = 1.0
+    if not stats:
+        return fallback
 
-        remaining -= day_consumption
-        days += 1.0
+    total_km = 0.0
+    total_days = 0
 
-        if remaining <= 0:
-            break
+    for wd, s in stats.items():
+        km = float(s.get("km", 0.0))
+        count = int(s.get("count", 0))
+        if count <= 0:
+            continue
+        total_km += km
+        total_days += count
 
-        weekday = (weekday + 1) % 7
+    if total_days <= 0:
+        return fallback
 
-    if remaining > 0:
-        days += remaining / max(day_consumption, 1.0)
+    avg = total_km / total_days
+    # Begrenzen auf sinnvolle Werte
+    if avg <= 0:
+        return fallback
 
+    return round(avg, 1)
+
+
+async def estimate_days_left(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    *,
+    km_left: Optional[float],
+    fallback_daily_km: float = 40.0,
+) -> Optional[float]:
+    """
+    Estimate remaining days based on km_left and learned daily km.
+
+    Wird von Strategy-Sensoren genutzt, um sensor.fuel_watcher_days_left zu berechnen.
+    """
+    if km_left is None:
+        return None
+
+    avg_daily_km = await get_avg_daily_km(hass, entry, fallback=fallback_daily_km)
+    if avg_daily_km <= 0:
+        return None
+
+    days = km_left / avg_daily_km
     return round(days, 1)

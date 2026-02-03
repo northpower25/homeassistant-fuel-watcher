@@ -1,6 +1,6 @@
 """
 Commit: feat(const): add vehicle_name and vehicle entity keys
-(odometer, fuel level, location, consumption)
+(odometer, fuel level, location, consumption), Trasholds for decition
 """
 
 DOMAIN = "fuel_watcher"
@@ -22,5 +22,9 @@ CONF_ENTITY_ODOMETER = "entity_odometer"
 CONF_ENTITY_FUEL_LEVEL = "entity_fuel_level"
 CONF_ENTITY_LOCATION = "entity_location"
 CONF_ENTITY_CONSUMPTION = "entity_consumption"
+
+# Trasholds for decition
+CONF_PRICE_DROP_PERCENT_THRESHOLD = "price_drop_percent_threshold"
+CONF_PRICE_DROP_ABSOLUTE_THRESHOLD = "price_drop_absolute_threshold"
 
 PLATFORMS = ["sensor"]

@@ -5,7 +5,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 
 from ..const import DOMAIN
-from ..tank_history import get_last_tank_event
 
 
 class FuelWatcherMainSensor(SensorEntity):
@@ -38,7 +37,17 @@ class FuelWatcherMainSensor(SensorEntity):
 
     async def async_update(self) -> None:
         """Update main sensor state from last tank event (Fallback)."""
-        last = get_last_tank_event(self.hass, self.entry)
+        # Hol die Store-Instanz, die in __init__.py bei setup_entry angelegt wird
+        store = self.hass.data.get(DOMAIN, {}).get(self.entry.entry_id, {}).get("tank_history_store")
+        last = None
+        if store:
+            # use the new async API
+            try:
+                last = await store.async_get_last_event()
+            except Exception:
+                # fallback: leave last as None (do not raise to avoid breaking sensor update)
+                last = None
+
         self._attrs["last_tank_event"] = last
 
         if last:

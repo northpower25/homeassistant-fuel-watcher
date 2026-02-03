@@ -1,45 +1,57 @@
-# Commit: fix: correct tank history sensor import path 
+"""
+Commit: fix(sensor): restore valid sensor platform setup and add vehicle data sensor hook
+
+Fuel Watcher – Sensor Platform
+------------------------------
+Registriert alle Sensoren der Integration:
+- BestPriceSensor
+- StrategySensor
+- RangeDaysSensor
+- VehicleDataSensor (optional, wenn Fahrzeug-Entitäten konfiguriert sind)
+"""
+
 from __future__ import annotations
 
 from homeassistant.core import HomeAssistant
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .main import FuelWatcherMainSensor
-from .strategy import (
-    FuelWatcherDecisionSensor,
-    FuelWatcherRangeKmSensor,
-    FuelWatcherDaysLeftSensor,
-    FuelWatcherPriceDeltaSensor,
-    FuelWatcherPriceSpikeSensor,
+from ..const import (
+    CONF_ENTITY_RANGE,
+    CONF_ENTITY_ODOMETER,
+    CONF_ENTITY_FUEL_LEVEL,
+    CONF_ENTITY_LOCATION,
+    CONF_ENTITY_CONSUMPTION,
 )
-from .diagnostics import FuelWatcherDiagnosticsSensor
-from .location import FuelWatcherLocationSensor, FuelWatcherDistanceSensor
-from .tank_history_sensor import FuelWatcherTankHistorySensor
+from .best_price import FuelWatcherBestPriceSensor
+from .strategy import FuelWatcherStrategySensor
+from .range_days import FuelWatcherRangeDaysSensor
+from .vehicle_data import FuelWatcherVehicleDataSensor
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
     entry: ConfigEntry,
     async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Set up all Fuel Watcher sensors."""
+):
+    """Set up Fuel Watcher sensors."""
+    sensors = []
 
-    entities = [
-        FuelWatcherMainSensor(hass, entry),
+    # Basis-Sensoren
+    sensors.append(FuelWatcherBestPriceSensor(hass, entry))
+    sensors.append(FuelWatcherStrategySensor(hass, entry))
+    sensors.append(FuelWatcherRangeDaysSensor(hass, entry))
 
-        FuelWatcherDecisionSensor(hass, entry),
-        FuelWatcherRangeKmSensor(hass, entry),
-        FuelWatcherDaysLeftSensor(hass, entry),
-        FuelWatcherPriceDeltaSensor(hass, entry),
-        FuelWatcherPriceSpikeSensor(hass, entry),
-
-        FuelWatcherDiagnosticsSensor(hass, entry),
-
-        FuelWatcherLocationSensor(hass, entry),
-        FuelWatcherDistanceSensor(hass, entry),
-
-        FuelWatcherTankHistorySensor(hass, entry),
+    # Fahrzeugdaten-Sensor nur, wenn mindestens eine Fahrzeug-Entität gesetzt ist
+    vehicle_entities = [
+        entry.options.get(CONF_ENTITY_RANGE) or entry.data.get(CONF_ENTITY_RANGE),
+        entry.options.get(CONF_ENTITY_ODOMETER) or entry.data.get(CONF_ENTITY_ODOMETER),
+        entry.options.get(CONF_ENTITY_FUEL_LEVEL) or entry.data.get(CONF_ENTITY_FUEL_LEVEL),
+        entry.options.get(CONF_ENTITY_LOCATION) or entry.data.get(CONF_ENTITY_LOCATION),
+        entry.options.get(CONF_ENTITY_CONSUMPTION) or entry.data.get(CONF_ENTITY_CONSUMPTION),
     ]
 
-    async_add_entities(entities)
+    if any(vehicle_entities):
+        sensors.append(FuelWatcherVehicleDataSensor(hass, entry))
+
+    async_add_entities(sensors)

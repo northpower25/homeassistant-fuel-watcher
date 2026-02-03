@@ -3,13 +3,20 @@
     "step": {
       "user": {
         "title": "Fuel Watcher einrichten",
-        "description": "Bitte Tankerkoenig API‑Key und Telegram‑Daten eingeben.",
+        "description": "Bitte Fahrzeugdaten und API‑Zugangsdaten eingeben.",
         "data": {
+          "vehicle_name": "Fahrzeugname / Kennzeichen",
           "tankerkoenig_api": "Tankerkoenig API Key",
           "telegram_token": "Telegram Bot Token",
           "telegram_chat_id": "Telegram Chat ID",
           "radius": "Suchradius (km)",
-          "fuel_type": "Kraftstofftyp (e5, e10, diesel)"
+          "fuel_type": "Kraftstofftyp (e5, e10, diesel)",
+
+          "entity_range": "Reichweite‑Entität",
+          "entity_odometer": "Kilometerstand‑Entität",
+          "entity_fuel_level": "Tankfüllstand‑Entität",
+          "entity_location": "Positions‑Entität (lat/lon)",
+          "entity_consumption": "Verbrauchs‑Entität"
         }
       }
     }
@@ -18,12 +25,13 @@
     "step": {
       "init": {
         "title": "Fuel Watcher Optionen",
-        "description": "Erweiterte Einstellungen für Strategie und Reichweite.",
+        "description": "Fahrzeugdaten und Entitäten anpassen.",
         "data": {
           "entity_range": "Reichweite‑Entität",
-          "price_spike_threshold": "Preis‑Spike‑Schwelle (€/L)",
-          "decision_delta_threshold": "Delta‑Schwelle für Tankentscheidung (€/L)",
-          "min_days_left": "Minimale Resttage bis Tankempfehlung"
+          "entity_odometer": "Kilometerstand‑Entität",
+          "entity_fuel_level": "Tankfüllstand‑Entität",
+          "entity_location": "Positions‑Entität",
+          "entity_consumption": "Verbrauchs‑Entität"
         }
       }
     }

@@ -32,6 +32,8 @@
           "entity_fuel_level": "Tankfüllstand‑Entität",
           "entity_location": "Positions‑Entität",
           "entity_consumption": "Verbrauchs‑Entität"
+          "price_drop_percent_threshold": "Preis fällt um mindestens (%)",
+          "price_drop_absolute_threshold": "Preis fällt um mindestens (€/L)"
         }
       }
     }

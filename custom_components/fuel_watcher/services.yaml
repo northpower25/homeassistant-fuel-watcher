@@ -1,74 +1,153 @@
-send_test_notification:
-  name: Testnachricht senden
-  description: Sendet eine Testnachricht über die konfigurierte Benachrichtigungsmethode.
-  fields:
-    config_entry_id:
-      description: Optionale Config-Entry-ID, falls mehrere Instanzen existieren.
-      example: "8f3b2c1d9a"
+# Commit: feat(services): restore full service suite from v0.0.27 with new storage backend
+
+########################################
+# Tank History Services
+########################################
 
 add_tank_event:
-  name: Tankvorgang hinzufügen
-  description: Fügt einen neuen Tankvorgang zur Fuel-Watcher-Historie hinzu.
+  name: Add Tank Event
+  description: Add a tank event manually.
   fields:
-    config_entry_id:
-      description: Optionale Config-Entry-ID, falls mehrere Instanzen existieren.
     price_per_liter:
-      description: Preis pro Liter
+      description: Price per liter
       example: 1.72
     liters:
-      description: Getankte Liter
+      description: Liters
       example: 42.5
     total_cost:
-      description: Gesamtkosten (optional, wird sonst berechnet)
+      description: Total cost (optional, auto-calculated if missing)
       example: 73.10
     station_name:
-      description: Name der Tankstelle (optional)
-      example: "Aral Musterstraße"
-    suggested_price:
-      description: Empfohlener Preis zum Zeitpunkt des Tankens (optional)
-      example: 1.79
+      description: Station name
+      example: Shell Hamburg
     odometer:
-      description: Kilometerstand (optional)
-      example: 12840
+      description: Odometer reading
+      example: 123456
     source:
-      description: Quelle (manual/telegram/auto)
-      example: "manual"
+      description: Source of the event
+      example: manual
 
 update_tank_event:
-  name: Tankvorgang aktualisieren
-  description: Aktualisiert einen bestehenden Tankvorgang.
+  name: Update Tank Event
+  description: Update an existing tank event.
   fields:
-    config_entry_id:
-      description: Optionale Config-Entry-ID, falls mehrere Instanzen existieren.
     event_id:
-      description: ID des Tankvorgangs
+      description: ID of the event to update
+      example: 3
     price_per_liter:
-      description: Neuer Preis pro Liter (optional)
+      description: New price per liter
     liters:
-      description: Neue Liter (optional)
+      description: New liters
     total_cost:
-      description: Neue Gesamtkosten (optional)
+      description: New total cost
     station_name:
-      description: Neue Tankstelle (optional)
-    suggested_price:
-      description: Neuer empfohlener Preis (optional)
+      description: New station name
     odometer:
-      description: Neuer Kilometerstand (optional)
-    source:
-      description: Neue Quelle (optional)
+      description: New odometer value
 
 delete_tank_event:
-  name: Tankvorgang löschen
-  description: Löscht einen Tankvorgang.
+  name: Delete Tank Event
+  description: Delete a tank event by ID.
   fields:
-    config_entry_id:
-      description: Optionale Config-Entry-ID, falls mehrere Instanzen existieren.
     event_id:
-      description: ID des Tankvorgangs
+      description: ID of the event to delete
+      example: 3
 
 clear_tank_history:
-  name: Tankhistorie löschen
-  description: Löscht alle Tankvorgänge.
+  name: Clear Tank History
+  description: Remove all tank events.
+
+
+########################################
+# Odometer / Statistics Services
+########################################
+
+add_odometer:
+  name: Add Odometer Reading
+  description: Add a new odometer reading.
   fields:
-    config_entry_id:
-      description: Optionale Config-Entry-ID, falls mehrere Instanzen existieren.
+    value:
+      description: Odometer value
+      example: 123456
+
+clear_odometer_history:
+  name: Clear Odometer History
+  description: Remove all odometer entries.
+
+recompute_statistics:
+  name: Recompute Statistics
+  description: Rebuild weekday consumption statistics from odometer history.
+
+
+########################################
+# Price Services
+########################################
+
+add_price:
+  name: Add Price Entry
+  description: Add a price entry manually.
+  fields:
+    price:
+      description: Price per liter
+      example: 1.72
+
+clear_price_history:
+  name: Clear Price History
+  description: Remove all price entries.
+
+
+########################################
+# Telegram Services
+########################################
+
+send_test_notification:
+  name: Send Test Notification
+  description: Sends a Telegram test message.
+
+send_custom_message:
+  name: Send Custom Telegram Message
+  description: Sends a custom Telegram message.
+  fields:
+    message:
+      description: Message text
+      example: "Hello from Fuel Watcher"
+
+
+########################################
+# Strategy / Debug Services
+########################################
+
+force_update:
+  name: Force Full Update
+  description: Force Tankerkoenig update and sensor refresh.
+
+debug_dump:
+  name: Debug Dump
+  description: Dump all internal data to the log.
+
+
+########################################
+# Navigation Services
+########################################
+
+send_navigation_message:
+  name: Send Navigation Message
+  description: Sends a Telegram message with navigation links to the best station.
+
+
+########################################
+# API Services
+########################################
+
+force_api_update:
+  name: Force API Update
+  description: Force Tankerkoenig API call and update best station.
+
+
+########################################
+# Error Handling
+########################################
+
+reset_errors:
+  name: Reset Errors
+  description: Clear last_error in diagnostics.

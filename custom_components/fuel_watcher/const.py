@@ -1,30 +1,26 @@
 """
-Commit: refactor(const): remove deprecated config keys and align constants with new storage-based architecture
-
-Fuel Watcher – Constants
-------------------------
-Bereinigte und modernisierte Konstanten für die neue Storage-Architektur.
+Commit: feat(const): add vehicle_name and vehicle entity keys
+(odometer, fuel level, location, consumption)
 """
-
-from __future__ import annotations
 
 DOMAIN = "fuel_watcher"
 
-# Supported sources
-SOURCE_TANKERKOENIG = "tankerkoenig"
-SUPPORTED_SOURCES = [SOURCE_TANKERKOENIG]
-
-# Config keys (active)
+# Config keys
 CONF_TANKERKOENIG_API = "tankerkoenig_api"
 CONF_TELEGRAM_TOKEN = "telegram_token"
 CONF_TELEGRAM_CHAT_ID = "telegram_chat_id"
 
 CONF_RADIUS = "radius"
-CONF_FUEL = "fuel"
-CONF_SOURCE = "source"
+CONF_FUEL_TYPE = "fuel_type"
 
-# Range entity (only remaining vehicle-related config)
+# Vehicle identity
+CONF_VEHICLE_NAME = "vehicle_name"
+
+# Vehicle entity references
 CONF_ENTITY_RANGE = "entity_range"
+CONF_ENTITY_ODOMETER = "entity_odometer"
+CONF_ENTITY_FUEL_LEVEL = "entity_fuel_level"
+CONF_ENTITY_LOCATION = "entity_location"
+CONF_ENTITY_CONSUMPTION = "entity_consumption"
 
-# Platforms
 PLATFORMS = ["sensor"]

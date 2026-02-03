@@ -3,22 +3,27 @@
     "step": {
       "user": {
         "title": "Fuel Watcher einrichten",
-        "description": "Bitte API‑Keys, Standortdaten und Fahrzeugdaten eingeben.",
+        "description": "Bitte Tankerkoenig API‑Key und Telegram‑Daten eingeben.",
         "data": {
-          "tankerkoenig_api_key": "Tankerkoenig API Key",
+          "tankerkoenig_api": "Tankerkoenig API Key",
           "telegram_token": "Telegram Bot Token",
           "telegram_chat_id": "Telegram Chat ID",
-          "plz": "PLZ",
-          "radius": "Radius (km)",
-          "fuel": "Kraftstoff",
-          "source": "Preisquelle",
-          "price_threshold": "Preisschwelle (€/l, 0 = deaktiviert)",
-          "distance_threshold_km": "Max. Entfernung zur Tankstelle (km, 0 = egal)",
-          "entity_fuel_level": "Tankinhalt Entität (Dropdown oder Name)",
-          "entity_range": "Reichweite Entität (Dropdown oder Name)",
-          "entity_consumption": "Verbrauch Entität (optional)",
-          "entity_odometer": "Kilometerstand Entität (optional)",
-          "entity_location": "Positionsentität (lat,lon, optional)"
+          "radius": "Suchradius (km)",
+          "fuel_type": "Kraftstofftyp (e5, e10, diesel)"
+        }
+      }
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Fuel Watcher Optionen",
+        "description": "Erweiterte Einstellungen für Strategie und Reichweite.",
+        "data": {
+          "entity_range": "Reichweite‑Entität",
+          "price_spike_threshold": "Preis‑Spike‑Schwelle (€/L)",
+          "decision_delta_threshold": "Delta‑Schwelle für Tankentscheidung (€/L)",
+          "min_days_left": "Minimale Resttage bis Tankempfehlung"
         }
       }
     }

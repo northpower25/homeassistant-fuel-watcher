@@ -1,4 +1,4 @@
-# Commit: fix: correct tank history sensor import path
+# Commit: fix: correct tank history sensor import path 
 from __future__ import annotations
 
 from homeassistant.core import HomeAssistant

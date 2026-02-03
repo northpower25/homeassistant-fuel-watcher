@@ -1,6 +1,6 @@
 """
 Commit: feat(config_flow): add vehicle_name and vehicle entity selection
-(odometer, fuel level, location, consumption)
+(odometer, fuel level, location, consumption), Threshold percent and absolut 
 
 Fuel Watcher – Config Flow
 --------------------------
@@ -10,7 +10,8 @@ Erweitert um:
 - entity_fuel_level
 - entity_location
 - entity_consumption
-
+- PRICE_DROP_PERCENT_THRESHOLD
+- PRICE_DROP_ABSOLUTE_THRESHOLD
 Diese Werte werden NICHT als eigene Entitäten erzeugt,
 sondern Fuel Watcher liest die Daten direkt aus den angegebenen Entitäten.
 """
@@ -123,6 +124,14 @@ class FuelWatcherOptionsFlow(config_entries.OptionsFlow):
                     CONF_ENTITY_CONSUMPTION,
                     default=self.entry.options.get(CONF_ENTITY_CONSUMPTION, self.entry.data.get(CONF_ENTITY_CONSUMPTION)),
                 ): vol.In(entities),
+                
+                vol.Optional(
+                    CONF_PRICE_DROP_PERCENT_THRESHOLD, 
+                    default=5): float,
+                
+                vol.Optional(
+                    CONF_PRICE_DROP_ABSOLUTE_THRESHOLD, 
+                    default=0.10): float,
             }
         )
 

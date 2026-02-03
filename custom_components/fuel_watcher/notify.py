@@ -91,3 +91,8 @@ async def send_test_notification(hass: HomeAssistant, entry: ConfigEntry):
         "Wenn du das hier lesen kannst, funktioniert dein Telegram‑Bot einwandfrei 🚀"
     )
     await send_notification(hass, entry, text)
+
+async def send_template_message(hass, entry, text: str):
+    """Send a template-rendered message."""
+    await send_notification(hass, entry, text)
+

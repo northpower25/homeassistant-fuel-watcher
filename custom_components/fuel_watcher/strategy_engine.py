@@ -3,19 +3,16 @@ Commit: feat(strategy): add percent and absolute price drop thresholds to decisi
 
 Fuel Watcher – Strategy Engine
 ------------------------------
-Erweitert um:
-- price_drop_percent_threshold
-- price_drop_absolute_threshold
+Entscheidet, ob eine Tankempfehlung ausgesprochen wird.
 
-Die Strategy-Engine entscheidet:
-- Soll getankt werden?
-- Ist der Preis signifikant gefallen?
-- Ist der Preis im Vergleich zum letzten Preis attraktiv?
-
-Die Engine nutzt:
-- Storage (last_price, last_station, history)
-- Options (Schwellwerte)
-- Fahrzeugdaten (range_entity)
+Nutzt:
+- last_price aus Storage
+- konfigurierbare Schwellwerte:
+  - price_drop_percent_threshold
+  - price_drop_absolute_threshold
+- schreibt:
+  - last_price
+  - last_decision
 """
 
 from __future__ import annotations
@@ -30,7 +27,6 @@ from .storage import (
     set_last_decision,
 )
 from .const import (
-    CONF_ENTITY_RANGE,
     CONF_PRICE_DROP_PERCENT_THRESHOLD,
     CONF_PRICE_DROP_ABSOLUTE_THRESHOLD,
 )
@@ -46,7 +42,8 @@ async def evaluate_strategy(
 ) -> dict:
     """
     Hauptlogik der Tankstrategie.
-    Gibt ein dict zurück:
+
+    Rückgabe:
     {
         "should_tank": bool,
         "reason": str,
@@ -57,17 +54,16 @@ async def evaluate_strategy(
 
     options = entry.options or entry.data
 
-    # Schwellwerte aus Options
     percent_threshold = float(options.get(CONF_PRICE_DROP_PERCENT_THRESHOLD, 0))
     absolute_threshold = float(options.get(CONF_PRICE_DROP_ABSOLUTE_THRESHOLD, 0))
 
-    # Letzten Preis laden
     last_price = await get_last_price(hass, entry)
 
     if last_price is None:
-        # Beim ersten Start gibt es keinen Vergleich
+        # Erstes Mal: kein Vergleich möglich
         await set_last_price(hass, entry, current_price)
-        await set_last_decision(hass, entry, {"should_tank": False, "reason": "initial"})
+        decision = {"should_tank": False, "reason": "initial"}
+        await set_last_decision(hass, entry, decision)
         return {
             "should_tank": False,
             "reason": "initial",
@@ -75,7 +71,6 @@ async def evaluate_strategy(
             "delta_percent": 0,
         }
 
-    # Preisänderungen berechnen
     delta = current_price - last_price
     delta_percent = (delta / last_price) * 100 if last_price > 0 else 0
 
@@ -87,11 +82,12 @@ async def evaluate_strategy(
         delta_percent,
     )
 
-    # Entscheidung: Preis ist absolut gefallen
+    # 1) Absoluter Schwellwert
     if absolute_threshold > 0 and delta <= -absolute_threshold:
         reason = f"Preis um {abs(delta):.2f} € gefallen"
+        decision = {"should_tank": True, "reason": reason}
         await set_last_price(hass, entry, current_price)
-        await set_last_decision(hass, entry, {"should_tank": True, "reason": reason})
+        await set_last_decision(hass, entry, decision)
         return {
             "should_tank": True,
             "reason": reason,
@@ -99,11 +95,12 @@ async def evaluate_strategy(
             "delta_percent": delta_percent,
         }
 
-    # Entscheidung: Preis ist prozentual gefallen
+    # 2) Prozentualer Schwellwert
     if percent_threshold > 0 and delta_percent <= -percent_threshold:
         reason = f"Preis um {abs(delta_percent):.1f}% gefallen"
+        decision = {"should_tank": True, "reason": reason}
         await set_last_price(hass, entry, current_price)
-        await set_last_decision(hass, entry, {"should_tank": True, "reason": reason})
+        await set_last_decision(hass, entry, decision)
         return {
             "should_tank": True,
             "reason": reason,
@@ -111,8 +108,9 @@ async def evaluate_strategy(
             "delta_percent": delta_percent,
         }
 
-    # Keine Tankempfehlung
-    await set_last_decision(hass, entry, {"should_tank": False, "reason": "no_threshold_hit"})
+    # 3) Keine Empfehlung
+    decision = {"should_tank": False, "reason": "no_threshold_hit"}
+    await set_last_decision(hass, entry, decision)
     return {
         "should_tank": False,
         "reason": "no_threshold_hit",

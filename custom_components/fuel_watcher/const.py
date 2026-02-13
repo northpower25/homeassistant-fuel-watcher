@@ -47,4 +47,4 @@ DEFAULT_NOTIFY_MSG_RANGE_DAYS = (
     "Aktuelle Reichweite: `{range_km} km`"
 )
 
-PLATFORMS = ["sensor"]
+PLATFORMS = ["sensor", "switch", "binary_sensor"]

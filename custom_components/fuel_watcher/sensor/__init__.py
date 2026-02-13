@@ -29,6 +29,7 @@ from .range_days import FuelWatcherRangeDaysSensor
 from .vehicle_data import FuelWatcherVehicleDataSensor
 from .debug import FuelWatcherDebugSensor
 from .trip_log import TripLogSensor, CurrentTripSensor
+from .trip_cost import TripCostSensor
 
 async def async_setup_entry(
     hass: HomeAssistant,
@@ -59,5 +60,6 @@ async def async_setup_entry(
     # Trip tracking sensors
     sensors.append(TripLogSensor(hass, entry))
     sensors.append(CurrentTripSensor(hass, entry))
+    sensors.append(TripCostSensor(hass, entry))
 
     async_add_entities(sensors)

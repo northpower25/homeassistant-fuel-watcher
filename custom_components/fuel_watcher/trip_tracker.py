@@ -5,6 +5,11 @@ Phase 1: Basic trip detection and recording functionality
 - Detects trip start/end based on vehicle movement
 - Records odometer, fuel level, GPS coordinates
 - Manages current trip state
+
+Phase 2: Automatic cost calculation integration
+- Calculates fuel costs per trip
+- Applies German tax mileage rates
+- Updates trip statistics with cost data
 """
 
 from __future__ import annotations
@@ -19,6 +24,7 @@ from homeassistant.config_entries import ConfigEntry
 
 from .trip_models import Trip, TripCategory
 from . import storage
+from .trip_cost_calculator import TripCostCalculator
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -33,6 +39,7 @@ class TripTracker:
         self._last_location = None
         self._last_odometer = None
         self._last_fuel_level = None
+        self.cost_calculator = TripCostCalculator(hass, entry)
     
     async def check_trip_state(
         self,
@@ -199,15 +206,20 @@ class TripTracker:
         
         # Only save trip if it meets minimum distance requirement
         if trip.distance_km >= min_distance:
+            # Calculate costs before saving (Phase 2)
+            trip = await self.cost_calculator.calculate_trip_costs(trip)
+            
             await storage.add_trip(self.hass, self.entry, trip.to_dict())
             
             # Update statistics
             await self._update_statistics(trip)
             
             _LOGGER.info(
-                "Trip ended: %s, distance: %.2f km",
+                "Trip ended: %s, distance: %.2f km, cost: %.2f€, tax: %.2f€",
                 trip.trip_id,
                 trip.distance_km,
+                trip.fuel_cost_euros or 0.0,
+                trip.tax_mileage_amount or 0.0,
             )
         else:
             _LOGGER.debug(

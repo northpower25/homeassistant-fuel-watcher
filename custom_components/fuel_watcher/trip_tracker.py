@@ -10,6 +10,11 @@ Phase 2: Automatic cost calculation integration
 - Calculates fuel costs per trip
 - Applies German tax mileage rates
 - Updates trip statistics with cost data
+
+Phase 3: Geocoding integration
+- Automatic address resolution for trip start/end
+- Caching to minimize API calls
+- Rate limiting compliance
 """
 
 from __future__ import annotations
@@ -25,6 +30,7 @@ from homeassistant.config_entries import ConfigEntry
 from .trip_models import Trip, TripCategory
 from . import storage
 from .trip_cost_calculator import TripCostCalculator
+from .geocoding_service import GeocodingService
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -40,6 +46,7 @@ class TripTracker:
         self._last_odometer = None
         self._last_fuel_level = None
         self.cost_calculator = TripCostCalculator(hass, entry)
+        self.geocoding_service = GeocodingService(hass, entry)
     
     async def check_trip_state(
         self,
